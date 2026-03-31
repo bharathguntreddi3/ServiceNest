@@ -1,0 +1,110 @@
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { addToCart } from "../redux/cartSlice";
+import { useNavigate } from "react-router-dom";
+import AxiosInstance from "../Utils/AxiosInstance";
+
+// service card displays when a user clicks on a specific category
+
+/**
+ * ServiceCard component.
+ * Displays the service details and a button to add the service to the cart.
+ * @param {object} service - The service object containing the name, price and visiting charges.
+ * @example
+ * <ServiceCard service={{name:"Item 1",price:10,visit:5}} />
+ * @returns {JSX.Element} ServiceCard component.
+ *
+ * /*******  6afa4933-9cad-41ea-ad13-f8ea8d89aa27  ******/
+export default function ServiceCard({ service }) {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const cartItems = useSelector((state) => state.cart.items);
+  const user = useSelector((state) => state.auth.user);
+  const [isError, setIsError] = useState(false);
+  const [message, setMessage] = useState("");
+  const timeoutRef = useRef(null);
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      setIsError(true);
+      setMessage("Please login to add services to cart!");
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        setMessage("");
+        navigate("/login");
+      }, 1500);
+      return;
+    }
+
+    const isAlreadyInCart = cartItems.some((item) => item.id === service.id);
+
+    if (isAlreadyInCart) {
+      setIsError(true);
+      setMessage("Service Already added to the cart!");
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setMessage(""), 2000);
+    } else {
+      try {
+        const token = localStorage.getItem("token");
+        await AxiosInstance.post(
+          "http://localhost:3000/api/cart/add",
+          {
+            userId: user.id,
+            service: service, // The service object from props is already in the correct format
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
+        dispatch(addToCart(service));
+        setIsError(false);
+        setMessage("Service Successfully added to cart!");
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => setMessage(""), 2000);
+      } catch (error) {
+        console.error(
+          "Error adding to database cart:",
+          error.response?.data || error,
+        );
+        setIsError(true);
+        setMessage(
+          error.response?.data?.error || "Failed to save to database!",
+        );
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => setMessage(""), 2000);
+      }
+    }
+  };
+
+  return (
+    <div className="card">
+      <h3>{service.name}</h3>
+      <p>Price: ₹{service.price}</p>
+      <p>Visiting Charges: ₹{service.visit}</p>
+      <button onClick={handleAddToCart}>Add to Cart</button>
+
+      {message &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              bottom: "30px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              backgroundColor: isError ? "#dc3545" : "#28a745",
+              color: "white",
+              padding: "10px 20px",
+              borderRadius: "5px",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              zIndex: 1000,
+            }}
+          >
+            {message}
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
