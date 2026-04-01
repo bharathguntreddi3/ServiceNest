@@ -340,6 +340,28 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleServiceStatus = async (service) => {
+    const action = service.is_active ? "deactivate" : "activate";
+    if (window.confirm(`Are you sure you want to ${action} this service?`)) {
+      try {
+        const token = localStorage.getItem("token");
+        const updatedService = { ...service, is_active: !service.is_active };
+        await AxiosInstance.put(
+          `http://localhost:3000/api/admin/services/${service.id}`,
+          updatedService,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        setServices(
+          services.map((s) => (s.id === service.id ? updatedService : s)),
+        );
+        alert(`Service ${action}d successfully!`);
+      } catch (error) {
+        console.error(`Error ${action}ing service:`, error);
+        alert(`Failed to ${action} service.`);
+      }
+    }
+  };
+
   const handleDeleteService = async (id) => {
     if (window.confirm("Are you sure you want to delete this service?")) {
       try {
@@ -745,6 +767,7 @@ export default function AdminDashboard() {
                 handleDeleteService={handleDeleteService}
                 setEditingService={setEditingService}
                 setIsAddingService={setIsAddingService}
+                handleToggleServiceStatus={handleToggleServiceStatus}
               />
             )}
             {activeTab === "coupons" && (

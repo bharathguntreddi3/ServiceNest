@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { FaDownload } from "react-icons/fa";
+import { FaDownload, FaToggleOn, FaToggleOff } from "react-icons/fa";
 
 export default function AdminServices({
   services,
   handleDeleteService,
   setEditingService,
   setIsAddingService,
+  handleToggleServiceStatus,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -88,6 +89,7 @@ export default function AdminServices({
               <th>Category</th>
               <th>Price</th>
               <th>Visit Price</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -103,11 +105,36 @@ export default function AdminServices({
                   <td>₹{svc.price}</td>
                   <td>₹{svc.visit_price}</td>
                   <td>
+                    <span
+                      className={`status-badge ${
+                        svc.is_active ? "status-active" : "status-blocked"
+                      }`}
+                    >
+                      {svc.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td>
                     <button
                       className="admin-action-btn edit"
                       onClick={() => setEditingService(svc)}
                     >
                       Edit
+                    </button>
+                    <button
+                      className={`admin-action-btn ${
+                        svc.is_active ? "block" : "unblock"
+                      }`}
+                      onClick={() => handleToggleServiceStatus(svc)}
+                    >
+                      {svc.is_active ? (
+                        <>
+                          <FaToggleOff /> Deactivate
+                        </>
+                      ) : (
+                        <>
+                          <FaToggleOn /> Activate
+                        </>
+                      )}
                     </button>
                     <button
                       className="admin-action-btn delete"
@@ -120,7 +147,7 @@ export default function AdminServices({
               ))
             ) : (
               <tr className="no-users-row">
-                <td colSpan="6">No services found in the database.</td>
+                <td colSpan="7">No services found in the database.</td>
               </tr>
             )}
           </tbody>

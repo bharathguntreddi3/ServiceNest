@@ -137,8 +137,10 @@ const registrationOtpStore = {};
  * @returns {Object} JSON response indicating success or failure
  */
 app.post("/api/register/send-otp", async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "Email is required" });
+  const { email, phone } = req.body;
+  if (!email || !phone) {
+    return res.status(400).json({ error: "Email and phone are required" });
+  }
 
   try {
     const [regSettings] = await pool.execute(
@@ -153,12 +155,22 @@ app.post("/api/register/send-otp", async (req, res) => {
         .json({ error: "New user registrations are currently disabled." });
     }
     const cleanEmail = email.trim().toLowerCase();
-    const [rows] = await pool.execute(
+    const cleanPhone = phone.trim();
+
+    const [emailRows] = await pool.execute(
       `SELECT * FROM users WHERE LOWER(email) = ?`,
       [cleanEmail],
     );
-    if (rows.length > 0) {
+    if (emailRows.length > 0) {
       return res.status(409).json({ error: "Email already exists" });
+    }
+
+    const [phoneRows] = await pool.execute(
+      `SELECT * FROM users WHERE phone = ?`,
+      [cleanPhone],
+    );
+    if (phoneRows.length > 0) {
+      return res.status(409).json({ error: "Phone number already exists" });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -341,12 +353,10 @@ app.post("/api/login", async (req, res) => {
       user.is_blocked === "true";
     if (isBlocked) {
       console.log(`Result: Failed. User account is blocked!`);
-      return res
-        .status(403)
-        .json({
-          error:
-            "Your account has been blocked by the admin. Please contact the support team.",
-        });
+      return res.status(403).json({
+        error:
+          "Your account has been blocked by the admin. Please contact the support team.",
+      });
     }
 
     console.log(`Result: Success! User authenticated.`);
@@ -382,6 +392,7 @@ app.post("/api/login", async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        address: user.address,
         role: user.role ? String(user.role).toLowerCase() : "user",
         is_blocked: user.is_blocked,
       },
@@ -789,14 +800,15 @@ app.post("/api/coupons/validate", async (req, res) => {
         discount_percent: rows[0].discount_percent,
       });
     } else {
-      res.status(404).json({ success: false, error: "Invalid or expired coupon code." });
+      res
+        .status(404)
+        .json({ success: false, error: "Invalid or expired coupon code." });
     }
   } catch (error) {
     console.error("Error validating coupon:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 // --- Admin Coupon Routes ---
 
@@ -806,7 +818,9 @@ app.get("/api/admin/coupons", authenticateToken, async (req, res) => {
     return res.status(403).json({ error: "Access denied. Admins only." });
   }
   try {
-    const [rows] = await pool.execute("SELECT * FROM coupons ORDER BY created_at DESC");
+    const [rows] = await pool.execute(
+      "SELECT * FROM coupons ORDER BY created_at DESC",
+    );
     res.json(rows);
   } catch (error) {
     console.error("Error fetching admin coupons:", error);
@@ -821,7 +835,9 @@ app.post("/api/admin/coupons", authenticateToken, async (req, res) => {
   }
   const { code, description, discount_percent } = req.body;
   if (!code || discount_percent === undefined) {
-    return res.status(400).json({ error: "Code and discount percent are required." });
+    return res
+      .status(400)
+      .json({ error: "Code and discount percent are required." });
   }
 
   try {
@@ -829,11 +845,14 @@ app.post("/api/admin/coupons", authenticateToken, async (req, res) => {
       "INSERT INTO coupons (code, description, discount_percent) VALUES (?, ?, ?)",
       [code.toUpperCase(), description, discount_percent],
     );
-    const [newCoupon] = await pool.execute("SELECT * FROM coupons WHERE id = ?", [result.insertId]);
+    const [newCoupon] = await pool.execute(
+      "SELECT * FROM coupons WHERE id = ?",
+      [result.insertId],
+    );
     res.status(201).json(newCoupon[0]);
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-        return res.status(409).json({ error: 'Coupon code already exists.' });
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ error: "Coupon code already exists." });
     }
     console.error("Error adding coupon:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -842,46 +861,50 @@ app.post("/api/admin/coupons", authenticateToken, async (req, res) => {
 
 // PUT to update a coupon
 app.put("/api/admin/coupons/:id", authenticateToken, async (req, res) => {
-    if (req.user.role !== "admin") {
-        return res.status(403).json({ error: "Access denied. Admins only." });
-    }
-    const { id } = req.params;
-    const { code, description, discount_percent, is_active } = req.body;
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Access denied. Admins only." });
+  }
+  const { id } = req.params;
+  const { code, description, discount_percent, is_active } = req.body;
 
-    if (!code || discount_percent === undefined) {
-        return res.status(400).json({ error: "Code and discount percent are required." });
-    }
+  if (!code || discount_percent === undefined) {
+    return res
+      .status(400)
+      .json({ error: "Code and discount percent are required." });
+  }
 
-    try {
-        await pool.execute(
-            "UPDATE coupons SET code = ?, description = ?, discount_percent = ?, is_active = ? WHERE id = ?",
-            [code.toUpperCase(), description, discount_percent, is_active, id]
-        );
-        const [updatedCoupon] = await pool.execute("SELECT * FROM coupons WHERE id = ?", [id]);
-        res.json(updatedCoupon[0]);
-    } catch (error) {
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({ error: 'Coupon code already exists.' });
-        }
-        console.error("Error updating coupon:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+  try {
+    await pool.execute(
+      "UPDATE coupons SET code = ?, description = ?, discount_percent = ?, is_active = ? WHERE id = ?",
+      [code.toUpperCase(), description, discount_percent, is_active, id],
+    );
+    const [updatedCoupon] = await pool.execute(
+      "SELECT * FROM coupons WHERE id = ?",
+      [id],
+    );
+    res.json(updatedCoupon[0]);
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ error: "Coupon code already exists." });
     }
+    console.error("Error updating coupon:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
-
 
 // DELETE a coupon
 app.delete("/api/admin/coupons/:id", authenticateToken, async (req, res) => {
-    if (req.user.role !== "admin") {
-        return res.status(403).json({ error: "Access denied. Admins only." });
-    }
-    const { id } = req.params;
-    try {
-        await pool.execute("DELETE FROM coupons WHERE id = ?", [id]);
-        res.json({ message: "Coupon deleted successfully." });
-    } catch (error) {
-        console.error("Error deleting coupon:", error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Access denied. Admins only." });
+  }
+  const { id } = req.params;
+  try {
+    await pool.execute("DELETE FROM coupons WHERE id = ?", [id]);
+    res.json({ message: "Coupon deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting coupon:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // --- Forgot Password Routes ---
@@ -1121,7 +1144,7 @@ app.get("/api/categories/:id/services", async (req, res) => {
     }
 
     const [serviceRows] = await pool.execute(
-      "SELECT * FROM services WHERE category_id = ?",
+      "SELECT * FROM services WHERE category_id = ? AND is_active = 1",
       [categoryId],
     );
 
@@ -1152,7 +1175,7 @@ app.get("/api/services", async (req, res) => {
         c.name as category, 
         c.image as category_image 
       FROM services s
-      JOIN categories c ON s.category_id = c.id
+      JOIN categories c ON s.category_id = c.id WHERE s.is_active = 1
     `);
 
     // Group by category to match the frontend expected structure
@@ -1303,12 +1326,27 @@ app.get("/api/admin/services", authenticateToken, async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.execute(`
-      SELECT s.id, s.name, s.price, s.visit_price, c.name as category 
-      FROM services s 
-      JOIN categories c ON s.category_id = c.id
-      ORDER BY s.id DESC
-    `);
+    // Defensive check to see if the `is_active` column has been added to the table yet.
+    const [columns] = await pool.execute(
+      "SELECT 1 FROM information_schema.columns WHERE table_schema = ? AND table_name = 'services' AND column_name = 'is_active'",
+      [process.env.DB_NAME],
+    );
+    const hasIsActiveColumn = columns.length > 0;
+
+    const query = hasIsActiveColumn
+      ? `
+        SELECT s.id, s.name, s.price, s.visit_price, s.is_active, c.name as category 
+        FROM services s 
+        LEFT JOIN categories c ON s.category_id = c.id
+        ORDER BY s.id DESC
+      `
+      : `
+        SELECT s.id, s.name, s.price, s.visit_price, 1 as is_active, c.name as category 
+        FROM services s 
+        LEFT JOIN categories c ON s.category_id = c.id
+        ORDER BY s.id DESC
+      `;
+    const [rows] = await pool.execute(query);
     res.json(rows);
   } catch (error) {
     console.error("Error fetching admin services:", error);
@@ -1370,13 +1408,28 @@ app.put("/api/admin/services/:id", authenticateToken, async (req, res) => {
   }
 
   const serviceId = req.params.id;
-  const { name, price, visit_price } = req.body;
+  const { name, price, visit_price, is_active } = req.body;
 
   try {
-    const [result] = await pool.execute(
-      "UPDATE services SET name = ?, price = ?, visit_price = ? WHERE id = ?",
-      [name, price, visit_price, serviceId],
+    const [columns] = await pool.execute(
+      "SELECT 1 FROM information_schema.columns WHERE table_schema = ? AND table_name = 'services' AND column_name = 'is_active'",
+      [process.env.DB_NAME],
     );
+    const hasIsActiveColumn = columns.length > 0;
+
+    let result;
+    if (hasIsActiveColumn && is_active !== undefined) {
+      const isActiveValue = is_active ? 1 : 0;
+      [result] = await pool.execute(
+        "UPDATE services SET name = ?, price = ?, visit_price = ?, is_active = ? WHERE id = ?",
+        [name, price, visit_price, isActiveValue, serviceId],
+      );
+    } else {
+      [result] = await pool.execute(
+        "UPDATE services SET name = ?, price = ?, visit_price = ? WHERE id = ?",
+        [name, price, visit_price, serviceId],
+      );
+    }
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Service not found." });
@@ -1488,7 +1541,7 @@ app.post(
  */
 app.put("/api/user/:userId", authenticateToken, async (req, res) => {
   const { userId } = req.params;
-  const { name, email, phone, otp } = req.body;
+  const { name, email, phone, address, otp } = req.body;
 
   // Security: only allow users to update their own account
   if (req.user.id.toString() !== userId.toString()) {
@@ -1547,8 +1600,8 @@ app.put("/api/user/:userId", authenticateToken, async (req, res) => {
     }
 
     await pool.execute(
-      "UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?",
-      [name.trim(), cleanEmail, cleanPhone, userId],
+      "UPDATE users SET name = ?, email = ?, phone = ?, address = ? WHERE id = ?",
+      [name.trim(), cleanEmail, cleanPhone, address || null, userId],
     );
 
     const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [
@@ -1580,6 +1633,7 @@ app.put("/api/user/:userId", authenticateToken, async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         phone: updatedUser.phone,
+        address: updatedUser.address,
         role: updatedUser.role || "user",
       },
       token,

@@ -7,6 +7,7 @@ import { clearCart } from "../redux/cartSlice";
 import logo from "../assets/logo.png";
 import AxiosInstance from "../Utils/AxiosInstance";
 import { useSettings } from "../context/SettingsContext";
+import toast from "react-hot-toast";
 
 /**
  * Navbar component
@@ -95,7 +96,7 @@ export default function Navbar() {
           dispatch(clearCart());
           localStorage.removeItem("token");
           navigate("/login");
-          alert("Your session has expired. Please log in again.");
+          toast.error("Your session has expired. Please log in again.");
         };
 
         if (timeLeft <= 0) {
@@ -184,14 +185,14 @@ export default function Navbar() {
         setShowSettingsModal(false);
       } catch (error) {
         console.error("Error deleting account:", error);
-        alert("Failed to delete account. Please try again.");
+        toast.error("Failed to delete account. Please try again.");
       }
     }
   };
 
   const handleUpdateProfile = async () => {
     if (!editName.trim() || !editEmail.trim() || !editPhone.trim()) {
-      alert("Please fill in all fields.");
+      toast.error("Please fill in all fields.");
       return;
     }
 
@@ -213,12 +214,12 @@ export default function Navbar() {
         );
         setShowUpdateOtpInput(true);
         setResendTimer(60); // Start timer
-        alert(
+        toast.success(
           "An OTP has been sent to your registered email to verify this change.",
         );
       } catch (error) {
         console.error("Error sending OTP:", error);
-        alert(error.response?.data?.error || "Failed to send OTP.");
+        toast.error(error.response?.data?.error || "Failed to send OTP.");
       } finally {
         setIsUpdatingProfile(false);
       }
@@ -226,7 +227,7 @@ export default function Navbar() {
     }
 
     if (showUpdateOtpInput && !updateOtp.trim()) {
-      alert("Please enter the OTP sent to your email.");
+      toast.error("Please enter the OTP sent to your email.");
       return;
     }
 
@@ -242,12 +243,12 @@ export default function Navbar() {
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
       }
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
       setShowUpdateOtpInput(false);
       setUpdateOtp("");
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert(error.response?.data?.error || "Failed to update profile.");
+      toast.error(error.response?.data?.error || "Failed to update profile.");
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -263,10 +264,10 @@ export default function Navbar() {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setResendTimer(60); // Restart timer
-      alert("A new OTP has been sent to your registered email.");
+      toast.success("A new OTP has been sent to your registered email.");
     } catch (error) {
       console.error("Error resending OTP:", error);
-      alert(error.response?.data?.error || "Failed to resend OTP.");
+      toast.error(error.response?.data?.error || "Failed to resend OTP.");
     } finally {
       setIsResending(false);
     }
@@ -713,7 +714,7 @@ export default function Navbar() {
                   cursor: "pointer",
                 }}
               >
-                <input type="checkbox" defaultChecked /> Receive SMS alerts
+                <input type="checkbox" defaultChecked /> Receive SMS notifications
               </label>
               <hr
                 style={{

@@ -61,7 +61,10 @@ export default function Register() {
     try {
       const response = await axiosInstance.post(
         "http://localhost:3000/api/register/send-otp",
-        { email: email.trim() },
+        {
+          email: email.trim(),
+          phone: `${countryCode}${phone.trim()}`,
+        },
       );
       setSuccessMessage(response.data.message || `OTP sent to ${email}`);
       setStep(2);
@@ -84,7 +87,10 @@ export default function Register() {
     try {
       const response = await axiosInstance.post(
         "http://localhost:3000/api/register/send-otp",
-        { email: email.trim() },
+        {
+          email: email.trim(),
+          phone: `${countryCode}${phone.trim()}`,
+        },
       );
       setSuccessMessage(response.data.message || `OTP resent to ${email}`);
       setResendTimer(60); // Restart timer

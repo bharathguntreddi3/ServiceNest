@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation, Outlet } from "react-router-dom";
 import { useEffect } from "react";
+import { Toaster } from "react-hot-toast";
 import Navbar from "./components/Navbar";
 
 import HomeSearch from "./pages/HomeSearch";
@@ -53,6 +54,19 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollAndAOS />
+      <Toaster 
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+            fontSize: '15px',
+            fontWeight: '500',
+            padding: '12px 20px',
+          },
+        }}
+      />
       <Routes>
         {/* Routes wrapped in MainLayout will display the Navbar */}
         <Route element={<MainLayout />}>

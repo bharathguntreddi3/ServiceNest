@@ -3,8 +3,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../redux/cartSlice";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import toast from "react-hot-toast";
 
-// In-case if the fetching from database fails then these data will be displayed on front 
+// In-case if the fetching from database fails then these data will be displayed on front
 // like a safe failure switch
 const fallbackServices = [
   {
@@ -50,9 +51,6 @@ export default function PopularServices() {
   const cartItems = useSelector((state) => state.cart.items);
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
-  const timeoutRef = useRef(null);
 
   useEffect(() => {
     const fetchPopularServices = async () => {
@@ -72,25 +70,18 @@ export default function PopularServices() {
 
   const handleAddToCart = async (service, index) => {
     if (!user) {
-      setIsError(true);
-      setMessage("Please login to add services to cart!");
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        setMessage("");
+      toast.error("Please login to add services to cart!");
+      setTimeout(() => {
         navigate("/login");
       }, 1500);
       return;
     }
 
-    // numbered service id to store service id in db
     const serviceId = service.id || 1000 + index;
     const isAlreadyInCart = cartItems.some((item) => item.id === serviceId);
 
     if (isAlreadyInCart) {
-      setIsError(true);
-      setMessage("Service Already added to the cart!");
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => setMessage(""), 1500);
+      toast.error("Service Already added to the cart!");
     } else {
       const serviceObj = {
         id: serviceId,
@@ -103,7 +94,6 @@ export default function PopularServices() {
       };
 
       try {
-        // 1. Save to the database
         const token = localStorage.getItem("token");
         await axios.post(
           "http://localhost:3000/api/cart/add",
@@ -118,23 +108,16 @@ export default function PopularServices() {
           },
         );
 
-        // 2. Update Redux state
         dispatch(addToCart(serviceObj));
-        setIsError(false);
-        setMessage("Service Successfully added to cart!");
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => setMessage(""), 1500);
+        toast.success("Service Successfully added to cart!");
       } catch (error) {
         console.error(
           "Error adding to database cart:",
           error.response?.data || error,
         );
-        setIsError(true);
-        setMessage(
+        toast.error(
           error.response?.data?.error || "Failed to save to database!",
         );
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => setMessage(""), 1500);
       }
     }
   };
@@ -161,7 +144,8 @@ export default function PopularServices() {
               </div>
               <div className="service-info">
                 <h3>{service.name}</h3>
-                <p className="price">₹ 
+                <p className="price">
+                  ₹
                   {typeof service.price === "number"
                     ? `₹${service.price}`
                     : service.price}
@@ -173,24 +157,6 @@ export default function PopularServices() {
             </div>
           ))}
         </div>
-        {message && (
-          <div
-            style={{
-              position: "fixed",
-              bottom: "30px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              backgroundColor: isError ? "#dc3545" : "#28a745",
-              color: "white",
-              padding: "10px 20px",
-              borderRadius: "5px",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              zIndex: 1000,
-            }}
-          >
-            {message}
-          </div>
-        )}
       </div>
     </section>
   );

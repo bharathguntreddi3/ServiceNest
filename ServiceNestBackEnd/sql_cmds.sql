@@ -135,6 +135,8 @@ select * from categories;
 
 select * from services;
 
+ALTER TABLE services ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
 CREATE TABLE popular_services (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255),
@@ -212,3 +214,5 @@ INSERT INTO coupons (code, description, discount_percent) VALUES
 ('SAVE20', 'Save 20% on all services.', 20),
 ('NEST10', 'Flat 10% discount for returning customers.', 10)
 ON DUPLICATE KEY UPDATE code=code;
+
+ALTER TABLE users ADD COLUMN address TEXT DEFAULT NULL;

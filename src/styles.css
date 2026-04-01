@@ -1221,3 +1221,248 @@ font-size: 18px;
     display: none;
   }
 }
+
+
+/* --- CHECKOUT STEPPER --- */
+.stepper-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto 40px auto;
+  padding: 10px 20px 40px 20px; /* Extra bottom padding for labels */
+}
+
+.stepper-item {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.stepper-item:last-child {
+  flex: 0;
+}
+
+.step-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f5f7fb;
+  color: #888;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 16px;
+  z-index: 2;
+  border: 3px solid #ddd;
+  transition: all 0.3s ease;
+}
+
+.step-label {
+  position: absolute;
+  top: 50px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #888;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.step-line {
+  flex: 1;
+  height: 4px;
+  background-color: #ddd;
+  margin: 0 10px;
+  transition: all 0.3s ease;
+}
+
+/* Active State */
+.stepper-item.active .step-circle {
+  background-color: white;
+  color: #1e6bb8;
+  border-color: #1e6bb8;
+  box-shadow: 0 0 10px rgba(30, 107, 184, 0.2);
+}
+
+.stepper-item.active .step-label {
+  color: #1e6bb8;
+  font-weight: 700;
+}
+
+/* Completed State */
+.stepper-item.completed .step-circle {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.stepper-item.completed .step-line {
+  background-color: #28a745;
+}
+
+.stepper-item.completed .step-label {
+  color: #28a745;
+}
+
+@media (max-width: 600px) {
+  .step-label {
+    font-size: 12px;
+  }
+  .step-circle {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+}
+
+/* --- TIME SLOT PILLS (Schedule Page) --- */
+.time-slot-container {
+  text-align: left;
+  margin-bottom: 10px;
+  background: #fdfdfd;
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid #eee;
+}
+
+.time-slot-group {
+  margin-bottom: 20px;
+}
+
+.time-slot-group:last-child {
+  margin-bottom: 0;
+}
+
+.time-slot-period {
+  font-size: 13px;
+  color: #888;
+  margin: 0 0 10px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+}
+
+.time-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.time-slot-pill {
+  background-color: white;
+  border: 1.5px solid #ddd;
+  color: #555;
+  padding: 10px 5px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+
+.time-slot-pill:hover {
+  border-color: #1e6bb8;
+  color: #1e6bb8;
+  background-color: #f5f9ff;
+}
+
+/* Active Selected State */
+.time-slot-pill.selected {
+  background-color: #1e6bb8 !important; /* Forces the primary color */
+  color: white !important;
+  border-color: #1e6bb8 !important;
+  box-shadow: 0 4px 12px rgba(30, 107, 184, 0.3) !important;
+  transform: translateY(-2px); /* Slight lift effect */
+}
+
+/* Disabled Time Slot State */
+.time-slot-pill:disabled,
+.time-slot-pill.disabled {
+  background-color: #f5f5f5;
+  color: #bbb;
+  border-color: #e0e0e0;
+  cursor: not-allowed;
+  box-shadow: none;
+  text-decoration: line-through;
+}
+
+.time-slot-pill:disabled:hover,
+.time-slot-pill.disabled:hover {
+  background-color: #f5f5f5;
+  color: #bbb;
+  border-color: #e0e0e0;
+  transform: none; /* Prevents the hover lift effect */
+}
+
+
+/* --- MOBILE FLOATING FOOTER & UTILITIES --- */
+.desktop-hide {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .desktop-hide {
+    display: flex !important;
+  }
+  
+  .mobile-hide {
+    display: none !important;
+  }
+
+  /* Add padding so the floating footer doesn't cover content at the bottom */
+  .cart-page, .auth-container {
+    padding-bottom: 100px !important;
+  }
+
+  .mobile-floating-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
+    padding: 15px 20px;
+    z-index: 2000;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+    border-top: 1px solid #eee;
+  }
+
+  .mobile-floating-footer .price-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-floating-footer .price-info span {
+    font-size: 13px;
+    color: #777;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .mobile-floating-footer .price-info strong {
+    font-size: 22px;
+    color: #1e6bb8;
+    font-weight: 800;
+  }
+
+  .mobile-floating-footer button {
+    margin: 0;
+    padding: 12px 25px;
+    font-size: 16px;
+    width: auto;
+    min-width: 140px;
+  }
+}

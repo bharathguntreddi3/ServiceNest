@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { removeFromCart } from "../redux/cartSlice";
 import { useNavigate } from "react-router-dom";
 import AxiosInstance from "../Utils/AxiosInstance";
+import CheckoutStepper from "../components/CheckoutStepper";
 
 /**
  * Cart component
@@ -43,7 +44,9 @@ export default function Cart() {
     if (!code) return;
 
     try {
-      const response = await AxiosInstance.post("/api/coupons/validate", { code });
+      const response = await AxiosInstance.post("/api/coupons/validate", {
+        code,
+      });
       const { discount_percent } = response.data;
       setCouponCode(code);
       setDiscountPercent(discount_percent);
@@ -53,12 +56,16 @@ export default function Cart() {
       });
     } catch (error) {
       setDiscountPercent(0);
-      setCouponMessage({ type: "error", text: error.response?.data?.error || "Invalid coupon code." });
+      setCouponMessage({
+        type: "error",
+        text: error.response?.data?.error || "Invalid coupon code.",
+      });
     }
   };
 
   return (
     <div className="container cart-page">
+      <CheckoutStepper currentStep={1} />
       <h2 className="cart-header" data-aos="fade-down">
         Your Cart
       </h2>
@@ -182,12 +189,24 @@ export default function Cart() {
             </div>
 
             <button
-              className="login-btn checkout-btn"
+              className="login-btn checkout-btn mobile-hide"
               onClick={() => navigate("/schedule")}
             >
               Proceed to Checkout
             </button>
           </div>
+        </div>
+      )}
+
+      {cart.length > 0 && (
+        <div className="mobile-floating-footer desktop-hide">
+          <div className="price-info">
+            <span>Total Amount</span>
+            <strong>₹{finalTotal}</strong>
+          </div>
+          <button className="login-btn" onClick={() => navigate("/schedule")}>
+            Checkout
+          </button>
         </div>
       )}
       <style>{`
