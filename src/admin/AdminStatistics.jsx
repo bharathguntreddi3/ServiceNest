@@ -12,6 +12,7 @@ import {
   FaChartPie,
   FaMedal,
   FaDownload,
+  FaUserTie,
 } from "react-icons/fa";
 import {
   LineChart,
@@ -480,6 +481,14 @@ export default function AdminStatistics({ statistics, bookings = [], users = [] 
       icon: <FaTrophy />,
       color: "#6f42c1",
       isNumeric: false,
+    },
+    {
+      title: "Active Providers",
+      value: statistics?.totalProviders || 0,
+      formatter: null,
+      icon: <FaUserTie />,
+      color: "#fd7e14",
+      isNumeric: true,
     },
   ];
 

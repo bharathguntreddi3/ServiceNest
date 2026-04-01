@@ -32,6 +32,7 @@ export default function Navbar() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMyServicesModal, setShowMyServicesModal] = useState(false);
   const [bookedServices, setBookedServices] = useState([]);
+  const [bookingToCancel, setBookingToCancel] = useState(null);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [showPromoBanner, setShowPromoBanner] = useState(true);
   const [timeLeft, setTimeLeft] = useState(7200); // 2 hours in seconds
@@ -166,6 +167,28 @@ export default function Navbar() {
       fetchBookedServices();
     }
   }, [showMyServicesModal, user]);
+
+  const handleCancelBooking = (bookingId) => {
+    setBookingToCancel(bookingId);
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!bookingToCancel) return;
+    try {
+      const token = localStorage.getItem("token");
+      await AxiosInstance.delete(
+        `http://localhost:3000/api/bookings/${user.id}/${bookingToCancel}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setBookedServices((prev) => prev.filter((b) => b.id !== bookingToCancel));
+      toast.success("Booking cancelled successfully!");
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      toast.error(error.response?.data?.error || "Failed to cancel booking.");
+    } finally {
+      setBookingToCancel(null);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (
@@ -827,6 +850,40 @@ export default function Navbar() {
                           )}
                         </span>
                       )}
+                      {item.status === "Accepted" ? (
+                        <span style={{ fontSize: "14px", color: "#28a745", fontWeight: "500", marginTop: "4px" }}>
+                          ✅ Provider Assigned - Will contact you on{" "}
+                          {item.schedule_date
+                            ? new Date(item.schedule_date).toLocaleDateString(
+                                undefined,
+                                { year: "numeric", month: "short", day: "numeric" }
+                              )
+                            : "the scheduled date"}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: "14px", color: "#d39e00", fontWeight: "500", marginTop: "4px" }}>
+                          ⏳ Service Pending
+                        </span>
+                      )}
+                      {item.status !== "Accepted" && (
+                        <button
+                          onClick={() => handleCancelBooking(item.id)}
+                          style={{
+                            marginTop: "8px",
+                            padding: "6px 12px",
+                            backgroundColor: "#dc3545",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "5px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            alignSelf: "flex-start"
+                          }}
+                        >
+                          Cancel Booking
+                        </button>
+                      )}
                     </div>
                     <strong style={{ fontSize: "18px", color: "#2e7d32" }}>
                       ₹{item.price}
@@ -839,6 +896,31 @@ export default function Navbar() {
                 You have not booked any services yet.
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {bookingToCancel && (
+        <div style={modalOverlayStyle} onClick={() => setBookingToCancel(null)}>
+          <div style={{ ...modalContentStyle, maxWidth: "400px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#333" }}>Confirm Cancellation</h3>
+            <p style={{ margin: "0 0 25px", fontSize: "16px", color: "#555" }}>
+              Are you sure you want to cancel this booking?
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "15px", width: "100%" }}>
+              <button
+                onClick={confirmCancelBooking}
+                style={{ ...actionButtonStyle, flex: 1, backgroundColor: "#dc3545", padding: "10px" }}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setBookingToCancel(null)}
+                style={{ ...actionButtonStyle, flex: 2, backgroundColor: "#6c757d", padding: "10px" }}
+              >
+                No, Keep it
+              </button>
+            </div>
           </div>
         </div>
       )}

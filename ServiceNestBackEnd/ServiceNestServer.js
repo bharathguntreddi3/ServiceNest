@@ -92,30 +92,22 @@ const authenticateToken = (req, res, next) => {
       if (err)
         return res.status(403).json({ error: "Invalid or expired token." });
 
-      try {
-        // Automatically block users who have been blocked after they originally logged in
-        const [rows] = await pool.execute(
-          "SELECT is_blocked FROM users WHERE id = ?",
-          [decodedUser.id],
-        );
-        if (rows.length > 0) {
-          const isBlocked =
-            rows[0].is_blocked === 1 ||
-            rows[0].is_blocked === true ||
-            rows[0].is_blocked === "1" ||
-            rows[0].is_blocked === "true";
-          if (isBlocked) {
-            return res
-              .status(403)
-              .json({ error: "Your account has been blocked by the admin." });
+      // Automatically block users who have been blocked after they originally logged in
+      pool.execute("SELECT is_blocked FROM users WHERE id = ?", [decodedUser.id])
+        .then(([rows]) => {
+          if (rows.length > 0) {
+            const isBlocked = rows[0].is_blocked === 1 || rows[0].is_blocked === true || rows[0].is_blocked === "1" || rows[0].is_blocked === "true";
+            if (isBlocked) {
+              return res.status(403).json({ error: "Your account has been blocked by the admin." });
+            }
           }
-        }
-      } catch (dbErr) {
-        console.error("DB error during token verification:", dbErr);
-      }
-
-      req.user = decodedUser;
-      next();
+          req.user = decodedUser;
+          next();
+        })
+        .catch(dbErr => {
+          console.error("DB error during token verification:", dbErr);
+          return res.status(500).json({ error: "Internal Server Error" });
+        });
     },
   );
 };
@@ -841,6 +833,10 @@ app.get("/api/admin/statistics", authenticateToken, async (req, res) => {
       "SELECT COUNT(*) as activeUsers FROM users WHERE is_blocked = 0 OR is_blocked IS NULL",
     );
 
+    const [providerRows] = await pool.execute(
+      "SELECT COUNT(*) as totalProviders FROM users WHERE role = 'provider' AND (is_blocked = 0 OR is_blocked IS NULL)",
+    );
+
     const bookingStats = bookingStatsRows[0];
     const totalBookings = Number(bookingStats.totalBookings) || 0;
     const totalRevenue = Number(bookingStats.totalRevenue) || 0;
@@ -854,6 +850,7 @@ app.get("/api/admin/statistics", authenticateToken, async (req, res) => {
       weeklyRevenue: Number(bookingStats.weeklyRevenue) || 0,
       activeUsers: activeUsersRows[0].activeUsers || 0,
       averageOrderValue: averageOrderValue,
+      totalProviders: providerRows[0].totalProviders || 0,
     };
 
     res.json(stats);
@@ -866,11 +863,15 @@ app.get("/api/admin/statistics", authenticateToken, async (req, res) => {
       const [activeUsersRows] = await pool.execute(
         "SELECT COUNT(*) as activeUsers FROM users WHERE is_blocked = 0 OR is_blocked IS NULL",
       );
+      const [providerRows] = await pool.execute(
+        "SELECT COUNT(*) as totalProviders FROM users WHERE role = 'provider' AND (is_blocked = 0 OR is_blocked IS NULL)",
+      );
       return res.json({
         totalBookings: 0,
         weeklyRevenue: 0,
         activeUsers: activeUsersRows[0].activeUsers || 0,
         averageOrderValue: 0,
+        totalProviders: providerRows[0].totalProviders || 0,
       });
     }
     console.error("Error fetching admin statistics:", error);
@@ -1236,6 +1237,49 @@ app.get("/api/provider/bookings", authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route PUT /api/provider/bookings/:bookingId/status
+ * @description Updates the status of a specific booking.
+ * @access Private/Provider
+ */
+app.put(
+  "/api/provider/bookings/:bookingId/status",
+  authenticateToken,
+  async (req, res) => {
+    if (req.user.role !== "provider" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Access denied. Providers only." });
+    }
+
+    const { bookingId } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: "Status is required." });
+    }
+
+    try {
+      const [result] = await pool.execute(
+        "UPDATE bookings SET status = ? WHERE id = ?",
+        [status, bookingId],
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: "Booking not found." });
+      }
+
+      const [updatedBookingRows] = await pool.execute(
+        "SELECT * FROM bookings WHERE id = ?",
+        [bookingId],
+      );
+
+      res.json(updatedBookingRows[0]);
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+);
+
+/**
  * @route GET /api/bookings/:userId
  * @description Retrieves a user's booking history.
  * @access Private
@@ -1255,6 +1299,37 @@ app.get("/api/bookings/:userId", authenticateToken, async (req, res) => {
       return res.json([]);
     }
     console.error("Error fetching bookings:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+/**
+ * @route DELETE /api/bookings/:userId/:bookingId
+ * @description Cancels a pending booking for a user.
+ * @access Private
+ */
+app.delete("/api/bookings/:userId/:bookingId", authenticateToken, async (req, res) => {
+  const { userId, bookingId } = req.params;
+
+  // Security: Ensure users can only delete their own bookings
+  if (req.user.id.toString() !== userId.toString()) {
+    return res.status(403).json({ error: "Unauthorized access" });
+  }
+
+  try {
+    // Only allow deletion if the status is Pending (or NULL for older entries)
+    const [result] = await pool.execute(
+      "DELETE FROM bookings WHERE id = ? AND user_id = ? AND (status = 'Pending' OR status IS NULL)",
+      [bookingId, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ error: "Booking not found or has already been accepted by a provider." });
+    }
+
+    res.json({ message: "Booking cancelled successfully" });
+  } catch (error) {
+    console.error("Error cancelling booking:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
