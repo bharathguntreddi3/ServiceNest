@@ -119,7 +119,9 @@ export default function Schedule() {
       }
     }
 
-    navigate("/payment");
+    navigate("/payment", {
+      state: { address, phone, scheduleDate: date, scheduleTime: time },
+    });
   };
 
   return (

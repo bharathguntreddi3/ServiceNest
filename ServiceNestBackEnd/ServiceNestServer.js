@@ -13,6 +13,7 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcrypt");
 const forgotPasswordRoutes = require("./forgotPasswordRoutes");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
 const nodemailer = require("nodemailer");
 
 const app = express();
@@ -28,6 +29,9 @@ const dbConfig = {
 
 // Enable CORS so that our FrontEnd can communicate with this API
 app.use(cors({ origin: "http://localhost:5173" }));
+
+// Initialize Google Auth Client
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
@@ -404,6 +408,114 @@ app.post("/api/login", async (req, res) => {
       error: "Internal Server Error",
       details: error.message,
     });
+  }
+});
+
+/**
+ * @route POST /api/auth/google
+ * @description Authenticates a user via a Google ID token. If the user doesn't exist,
+ * a new account is created. Issues a new JWT token for the application session.
+ * @access Public
+ * @param {string} req.body.token - The Google ID token from the frontend.
+ * @returns {Object} JSON containing success message, user details, and JWT token.
+ */
+app.post("/api/auth/google", async (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: "Google token is required." });
+  }
+
+  try {
+    // Verify the Google ID token
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { name, email } = payload;
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if user already exists
+    const [users] = await pool.execute("SELECT * FROM users WHERE email = ?", [
+      cleanEmail,
+    ]);
+
+    let user = users[0];
+
+    // If user does not exist, create a new one
+    if (!user) {
+      console.log(`New user from Google: ${cleanEmail}. Creating account.`);
+      // For OAuth users, we don't have a password. Store a non-login-able value.
+      const randomPassword =
+        Math.random().toString(36).slice(-8) +
+        Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(randomPassword, 12);
+
+      const [result] = await pool.execute(
+        "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
+        [name, cleanEmail, hashedPassword, "user"],
+      );
+
+      const [newUserRows] = await pool.execute(
+        "SELECT * FROM users WHERE id = ?",
+        [result.insertId],
+      );
+      user = newUserRows[0];
+    }
+
+    // Check if the user is blocked
+    const isBlocked =
+      user.is_blocked === 1 ||
+      user.is_blocked === true ||
+      user.is_blocked === "1" ||
+      user.is_blocked === "true";
+    if (isBlocked) {
+      return res.status(403).json({
+        error:
+          "Your account has been blocked by the admin. Please contact support.",
+      });
+    }
+
+    // Update last_login timestamp
+    await pool.execute("UPDATE users SET last_login = NOW() WHERE id = ?", [
+      user.id,
+    ]);
+
+    // Get session timeout from settings
+    const [settingsRows] = await pool.execute(
+      "SELECT * FROM settings WHERE setting_key = 'sessionTimeout'",
+    );
+    const sessionTimeout =
+      settingsRows.length > 0 ? `${settingsRows[0].setting_value}m` : "120m";
+
+    // Generate our own JWT for the user
+    const appToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role ? String(user.role).toLowerCase() : "user",
+      },
+      process.env.JWT_SECRET || "default_secret_key",
+      { expiresIn: sessionTimeout },
+    );
+
+    res.json({
+      message: "Google sign-in successful",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        role: user.role ? String(user.role).toLowerCase() : "user",
+        is_blocked: user.is_blocked,
+      },
+      token: appToken,
+    });
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    res.status(401).json({ error: "Invalid Google token." });
   }
 });
 
@@ -1021,44 +1133,107 @@ app.delete(
  * @param {string} req.body.userId - ID of the user performing checkout
  */
 app.post("/api/checkout", authenticateToken, async (req, res) => {
-  const { userId } = req.body;
+  const {
+    userId,
+    address,
+    phone,
+    scheduleDate,
+    scheduleTime,
+    paymentMethod,
+  } = req.body;
 
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
+  if (req.user.id.toString() !== userId.toString()) {
+    return res.status(403).json({ error: "Unauthorized access" });
   }
 
+  if (
+    !userId ||
+    !address ||
+    !phone ||
+    !scheduleDate ||
+    !scheduleTime ||
+    !paymentMethod
+  ) {
+    return res.status(400).json({ error: "All booking details are required" });
+  }
+
+  const connection = await pool.getConnection();
   try {
+    await connection.beginTransaction();
+
     // 1. Get current cart items
-    const [cartItems] = await pool.execute(
+    const [cartItems] = await connection.execute(
       "SELECT * FROM cart_items WHERE user_id = ?",
       [userId],
     );
 
     if (cartItems.length === 0) {
+      await connection.rollback();
       return res.status(400).json({ error: "Cart is empty" });
     }
 
-    // 2. Move each item into the bookings table
-    for (const item of cartItems) {
-      await pool.execute(
-        "INSERT INTO bookings (user_id, service_id, service_name, price, quantity) VALUES (?, ?, ?, ?, ?)",
-        [userId, item.service_id, item.service_name, item.price, item.quantity],
-      );
-    }
+    // Get user name to store in the booking for easier retrieval
+    const [userRows] = await connection.execute(
+      "SELECT name FROM users WHERE id = ?",
+      [userId],
+    );
+    const userName = userRows.length > 0 ? userRows[0].name : "Unknown User";
+
+    // 2. Move items into the bookings table
+    const insertQuery = `
+      INSERT INTO bookings (
+        user_id, service_id, service_name, price, quantity, 
+        user_name, address, phone, schedule_date, schedule_time, payment_method
+      ) 
+      SELECT 
+        user_id, service_id, service_name, price, quantity, 
+        ?, ?, ?, ?, ?, ? 
+      FROM cart_items WHERE user_id = ?
+    `;
+    await connection.execute(
+      insertQuery,
+      [userName, address, phone, scheduleDate, scheduleTime, paymentMethod, userId],
+    );
 
     // 3. Clear the user's cart in the database after successful booking
-    await pool.execute("DELETE FROM cart_items WHERE user_id = ?", [userId]);
+    await connection.execute("DELETE FROM cart_items WHERE user_id = ?", [userId]);
+
+    await connection.commit();
 
     res
       .status(200)
       .json({ message: "Checkout successful, items moved to bookings" });
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error("Checkout error:", error);
     res.status(500).json({ error: "Internal Server Error" });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
 // --- Bookings Routes ---
+
+/**
+ * @route GET /api/provider/bookings
+ * @description Retrieves all bookings for providers to service.
+ * @access Private/Provider
+ */
+app.get("/api/provider/bookings", authenticateToken, async (req, res) => {
+  if (req.user.role !== "provider" && req.user.role !== "admin") {
+    return res.status(403).json({ error: "Access denied. Providers only." });
+  }
+
+  try {
+    const [rows] = await pool.execute(
+      "SELECT * FROM bookings ORDER BY booking_date DESC"
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching provider bookings:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 /**
  * @route GET /api/bookings/:userId

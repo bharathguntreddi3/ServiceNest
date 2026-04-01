@@ -1,22 +1,27 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './styles.css'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import "./styles.css";
 
-import {Provider} from "react-redux"
-import {store} from "./redux/store"
-import reportWebVitals from './reportWebVitals'
+import { Provider } from "react-redux";
+import { store } from "./redux/store";
+import reportWebVitals from "./reportWebVitals";
 
-import { SettingsProvider } from './context/SettingsContext';
+import { SettingsProvider } from "./context/SettingsContext";
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-        <Provider store={store}>
-            <SettingsProvider>
-                <App />
-            </SettingsProvider>
-        </Provider>
-    </React.StrictMode>,
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <Provider store={store}>
+        <SettingsProvider>
+          <App />
+        </SettingsProvider>
+      </Provider>
+    </GoogleOAuthProvider>
+  </React.StrictMode>,
 );
 
 // If you want to start measuring performance in your app, pass a function

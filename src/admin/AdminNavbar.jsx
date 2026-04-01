@@ -6,7 +6,7 @@ import { clearCart } from "../redux/cartSlice";
 import logo from "../assets/logo.png";
 import { FaBars } from "react-icons/fa";
 
-export default function AdminNavbar({ toggleSidebar }) {
+export default function AdminNavbar({ toggleSidebar, showAlert }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -30,18 +30,24 @@ export default function AdminNavbar({ toggleSidebar }) {
         const currentTime = Date.now();
         const timeLeft = expTime - currentTime;
 
-        const performAutoLogout = () => {
+        const handleSessionExpired = () => {
           dispatch(logout());
           dispatch(clearCart());
           localStorage.removeItem("token");
           navigate("/admin/login");
-          alert("Your admin session has expired. Please log in again.");
+        };
+
+        const triggerAutoLogout = () => {
+          showAlert(
+            "Your admin session has expired. Please log in again.",
+            handleSessionExpired,
+          );
         };
 
         if (timeLeft <= 0) {
-          performAutoLogout();
+          triggerAutoLogout();
         } else {
-          timeoutId = setTimeout(performAutoLogout, timeLeft);
+          timeoutId = setTimeout(triggerAutoLogout, timeLeft);
         }
       } catch (error) {
         console.error("Error parsing token for expiration", error);

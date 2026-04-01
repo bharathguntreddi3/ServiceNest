@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import AxiosInstance from "../Utils/AxiosInstance";
 
-export default function AdminSettings({ initialSettings, onSettingsSave }) {
+export default function AdminSettings({
+  initialSettings,
+  onSettingsSave,
+  showAlert,
+}) {
   const [settings, setSettings] = useState(
     initialSettings || {
       siteName: "ServiceNest",
@@ -39,10 +43,10 @@ export default function AdminSettings({ initialSettings, onSettingsSave }) {
       if (onSettingsSave) {
         onSettingsSave(settings);
       }
-      alert("Settings saved successfully!");
+      showAlert("Settings saved successfully!");
     } catch (error) {
       console.error("Error saving settings:", error);
-      alert("Failed to save settings. Please try again.");
+      showAlert("Failed to save settings. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -207,7 +211,7 @@ export default function AdminSettings({ initialSettings, onSettingsSave }) {
           </button>
           <button
             className="admin-btn-secondary"
-            onClick={() => alert("Cache cleared successfully!")}
+            onClick={() => showAlert("Cache cleared successfully!")}
             style={{ padding: "12px 24px", fontSize: "15px" }}
           >
             Clear System Cache

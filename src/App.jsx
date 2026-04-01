@@ -1,4 +1,10 @@
-import { BrowserRouter, Routes, Route, useLocation, Outlet } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  Outlet,
+} from "react-router-dom";
 import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import Navbar from "./components/Navbar";
@@ -12,11 +18,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 import AdminLogin from "./pages/AdminLogin";
-import ForgotPassword from "./pages/ForgotPassword"
+import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound"; // Assuming you have a 404 page component
 
 import AdminDashboard from "./admin/AdminDashboard";
-
+import ProviderDashboard from "./provider/ProviderDashboard";
 
 // Utility component to handle scrolling to top and refreshing AOS animations on route change
 function ScrollAndAOS() {
@@ -54,16 +60,16 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollAndAOS />
-      <Toaster 
+      <Toaster
         position="bottom-center"
         toastOptions={{
           style: {
-            borderRadius: '10px',
-            background: '#333',
-            color: '#fff',
-            fontSize: '15px',
-            fontWeight: '500',
-            padding: '12px 20px',
+            borderRadius: "10px",
+            background: "#333",
+            color: "#fff",
+            fontSize: "15px",
+            fontWeight: "500",
+            padding: "12px 20px",
           },
         }}
       />
@@ -86,6 +92,7 @@ function App() {
         {/* Admin Dashboard route left outside of MainLayout so it won't display the Navbar */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/provider" element={<ProviderDashboard />} />
         {/* Route left outside of MainLayout will NOT display the Navbar */}
         <Route path="*" element={<NotFound />} />
       </Routes>

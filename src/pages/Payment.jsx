@@ -1,6 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
 import { clearCart } from "../redux/cartSlice";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import AxiosInstance from "../Utils/AxiosInstance";
@@ -9,13 +9,24 @@ import CheckoutStepper from "../components/CheckoutStepper";
 export default function Payment() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const scheduleDetails = location.state;
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("UPI");
   const user = useSelector((state) => state.auth.user);
 
   async function pay() {
     if (!user) {
       toast.error("You need to be logged in to make a payment.");
+      navigate("/login");
+      return;
+    }
+
+    if (!scheduleDetails) {
+      toast.error("Booking details are missing. Please go back to the schedule page.");
+      navigate("/schedule");
       return;
     }
 
@@ -25,7 +36,11 @@ export default function Payment() {
       // Call the checkout endpoint to move items to bookings
       await AxiosInstance.post(
         "http://localhost:3000/api/checkout",
-        { userId: user.id },
+        {
+          userId: user.id,
+          ...scheduleDetails, // address, phone, scheduleDate, scheduleTime
+          paymentMethod: paymentMethod,
+        },
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
@@ -95,17 +110,48 @@ export default function Payment() {
           }}
         >
           <label style={radioContainerStyle}>
-            <input type="radio" name="pay" defaultChecked style={radioStyle} />{" "}
+            <input
+              type="radio"
+              name="pay"
+              value="UPI"
+              checked={paymentMethod === "UPI"}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              style={radioStyle}
+            />{" "}
             UPI
           </label>
           <label style={radioContainerStyle}>
-            <input type="radio" name="pay" style={radioStyle} /> Card
+            <input
+              type="radio"
+              name="pay"
+              value="Card"
+              checked={paymentMethod === "Card"}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              style={radioStyle}
+            />{" "}
+            Card
           </label>
           <label style={radioContainerStyle}>
-            <input type="radio" name="pay" style={radioStyle} /> Net Banking
+            <input
+              type="radio"
+              name="pay"
+              value="Net Banking"
+              checked={paymentMethod === "Net Banking"}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              style={radioStyle}
+            />{" "}
+            Net Banking
           </label>
           <label style={radioContainerStyle}>
-            <input type="radio" name="pay" style={radioStyle} /> Cash On
+            <input
+              type="radio"
+              name="pay"
+              value="Cash On Delivery"
+              checked={paymentMethod === "Cash On Delivery"}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              style={radioStyle}
+            />{" "}
+            Cash On
             Delivery
           </label>
         </div>

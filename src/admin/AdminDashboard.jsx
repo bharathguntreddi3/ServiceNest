@@ -33,6 +33,13 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null); // Added error state
   const [activeTab, setActiveTab] = useState("users");
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    type: "alert",
+    message: "",
+    onConfirm: null,
+    onClose: null,
+  });
   const [editingUser, setEditingUser] = useState(null);
   const [editingService, setEditingService] = useState(null);
   const [editingPopularService, setEditingPopularService] = useState(null);
@@ -83,6 +90,19 @@ export default function AdminDashboard() {
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
+  };
+
+  const showAlert = (message, onClose = null) => {
+    setModalConfig({ isOpen: true, type: "alert", message, onClose, onConfirm: null });
+  };
+
+  const showConfirm = (message, onConfirm) => {
+    setModalConfig({ isOpen: true, type: "confirm", message, onConfirm, onClose: null });
+  };
+
+  const closeModal = () => {
+    if (modalConfig.onClose) modalConfig.onClose();
+    setModalConfig((prev) => ({ ...prev, isOpen: false, onClose: null }));
   };
 
   const filteredBookings = useMemo(() => {
@@ -147,9 +167,8 @@ export default function AdminDashboard() {
     const fetchAdminData = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
-        alert("Access Denied: Admins only. Please log in first.");
         setError("Authentication failed. Please log in as an admin."); // Set error state
-        navigate("/admin/login");
+        showAlert("Access Denied: Admins only. Please log in first.", () => navigate("/admin/login"));
         return;
       }
 
@@ -167,8 +186,7 @@ export default function AdminDashboard() {
           console.error("Error fetching users:", error);
           const msg =
             error.response?.data?.error || "Access Denied: Admins only.";
-          alert(msg);
-          navigate("/admin/login");
+          showAlert(msg, () => navigate("/admin/login"));
           return;
         }
 
@@ -278,8 +296,8 @@ export default function AdminDashboard() {
     };
   }, [navigate]);
 
-  const handleDeleteUser = async (id) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
+  const handleDeleteUser = (id) => {
+    showConfirm("Are you sure you want to delete this user?", async () => {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.delete(
@@ -292,13 +310,13 @@ export default function AdminDashboard() {
       } catch (error) {
         console.error("Error deleting user:", error);
         setError("Failed to delete user."); // Set error state for user feedback
-        alert("Failed to delete user.");
+        showAlert("Failed to delete user.");
       }
-    }
+    });
   };
 
-  const handleSaveEdit = async () => {
-    if (window.confirm("Do you confirm saving these changes?")) {
+  const handleSaveEdit = () => {
+    showConfirm("Do you confirm saving these changes?", async () => {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.put(
@@ -313,14 +331,14 @@ export default function AdminDashboard() {
       } catch (error) {
         setError("Failed to update user."); // Set error state for user feedback
         console.error("Error updating user:", error);
-        alert("Failed to update user.");
+        showAlert("Failed to update user.");
       }
-    }
+    });
   };
 
-  const handleBlockUser = async (user) => {
+  const handleBlockUser = (user) => {
     const action = user.is_blocked ? "unblock" : "block";
-    if (window.confirm(`Are you sure you want to ${action} this user?`)) {
+    showConfirm(`Are you sure you want to ${action} this user?`, async () => {
       try {
         const token = localStorage.getItem("token");
         const updatedUser = { ...user, is_blocked: !user.is_blocked };
@@ -335,14 +353,14 @@ export default function AdminDashboard() {
       } catch (error) {
         setError(`Failed to ${action} user.`);
         console.error(`Error ${action}ing user:`, error);
-        alert(`Failed to ${action} user.`);
+        showAlert(`Failed to ${action} user.`);
       }
-    }
+    });
   };
 
-  const handleToggleServiceStatus = async (service) => {
+  const handleToggleServiceStatus = (service) => {
     const action = service.is_active ? "deactivate" : "activate";
-    if (window.confirm(`Are you sure you want to ${action} this service?`)) {
+    showConfirm(`Are you sure you want to ${action} this service?`, async () => {
       try {
         const token = localStorage.getItem("token");
         const updatedService = { ...service, is_active: !service.is_active };
@@ -354,16 +372,16 @@ export default function AdminDashboard() {
         setServices(
           services.map((s) => (s.id === service.id ? updatedService : s)),
         );
-        alert(`Service ${action}d successfully!`);
+        showAlert(`Service ${action}d successfully!`);
       } catch (error) {
         console.error(`Error ${action}ing service:`, error);
-        alert(`Failed to ${action} service.`);
+        showAlert(`Failed to ${action} service.`);
       }
-    }
+    });
   };
 
-  const handleDeleteService = async (id) => {
-    if (window.confirm("Are you sure you want to delete this service?")) {
+  const handleDeleteService = (id) => {
+    showConfirm("Are you sure you want to delete this service?", async () => {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.delete(
@@ -376,13 +394,13 @@ export default function AdminDashboard() {
       } catch (error) {
         setError("Failed to delete service."); // Set error state for user feedback
         console.error("Error deleting service:", error);
-        alert("Failed to delete service.");
+        showAlert("Failed to delete service.");
       }
-    }
+    });
   };
 
-  const handleSaveServiceEdit = async () => {
-    if (window.confirm("Do you confirm saving these changes?")) {
+  const handleSaveServiceEdit = () => {
+    showConfirm("Do you confirm saving these changes?", async () => {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.put(
@@ -396,18 +414,16 @@ export default function AdminDashboard() {
           ),
         );
         setEditingService(null);
-        alert("Service updated successfully!");
+        showAlert("Service updated successfully!");
       } catch (error) {
         console.error("Error updating service:", error);
-        alert("Failed to update service.");
+        showAlert("Failed to update service.");
       }
-    }
+    });
   };
 
-  const handleDeletePopularService = async (id) => {
-    if (
-      window.confirm("Are you sure you want to delete this popular service?")
-    ) {
+  const handleDeletePopularService = (id) => {
+    showConfirm("Are you sure you want to delete this popular service?", async () => {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.delete(
@@ -418,16 +434,14 @@ export default function AdminDashboard() {
       } catch (error) {
         setError("Failed to delete popular service.");
         console.error("Error deleting popular service:", error);
-        alert("Failed to delete popular service.");
+        showAlert("Failed to delete popular service.");
       }
-    }
+    });
   };
 
-  const handleSavePopularServiceEdit = async () => {
+  const handleSavePopularServiceEdit = () => {
     if (!editingPopularService) return;
-    if (
-      window.confirm("Do you confirm saving changes to this popular service?")
-    ) {
+    showConfirm("Do you confirm saving changes to this popular service?", async () => {
       try {
         const token = localStorage.getItem("token");
         const response = await AxiosInstance.put(
@@ -441,12 +455,12 @@ export default function AdminDashboard() {
           ),
         );
         setEditingPopularService(null);
-        alert("Popular service updated successfully!");
+        showAlert("Popular service updated successfully!");
       } catch (error) {
         console.error("Error updating popular service:", error);
-        alert("Failed to update popular service.");
+        showAlert("Failed to update popular service.");
       }
-    }
+    });
   };
 
   const handleAddPopularService = async () => {
@@ -455,7 +469,7 @@ export default function AdminDashboard() {
       !newPopularService.price ||
       !newPopularService.image_url
     ) {
-      alert("Please fill in all fields.");
+      showAlert("Please fill in all fields.");
       return;
     }
     try {
@@ -477,11 +491,11 @@ export default function AdminDashboard() {
 
       setIsAddingPopularService(false);
       setNewPopularService({ name: "", price: "", image_url: "" });
-      alert("Popular service added successfully!");
+      showAlert("Popular service added successfully!");
     } catch (error) {
       setError("Failed to add popular service.");
       console.error("Error adding popular service:", error);
-      alert("Failed to add popular service.");
+      showAlert("Failed to add popular service.");
     }
   };
 
@@ -492,7 +506,7 @@ export default function AdminDashboard() {
       !newService.price ||
       !newService.visit_price
     ) {
-      alert("Please fill in all fields before adding the service.");
+      showAlert("Please fill in all fields before adding the service.");
       return;
     }
 
@@ -522,17 +536,17 @@ export default function AdminDashboard() {
       setIsAddingService(false);
       setNewService({ category_id: "", name: "", price: "", visit_price: "" });
 
-      alert("Service added successfully!");
+      showAlert("Service added successfully!");
     } catch (error) {
       setError("Failed to add service."); // Set error state for user feedback
       console.error("Error adding service:", error);
-      alert("Failed to add service.");
+      showAlert("Failed to add service.");
     }
   };
 
   const handleAddCoupon = async () => {
     if (!newCoupon.code || newCoupon.discount_percent === "") {
-      alert("Please fill in code and discount percent.");
+      showAlert("Please fill in code and discount percent.");
       return;
     }
     try {
@@ -545,16 +559,16 @@ export default function AdminDashboard() {
       setCoupons([response.data, ...coupons]);
       setIsAddingCoupon(false);
       setNewCoupon({ code: "", description: "", discount_percent: "" });
-      alert("Coupon added successfully!");
+      showAlert("Coupon added successfully!");
     } catch (error) {
       console.error("Error adding coupon:", error);
-      alert(error.response?.data?.error || "Failed to add coupon.");
+      showAlert(error.response?.data?.error || "Failed to add coupon.");
     }
   };
 
-  const handleToggleCouponStatus = async (coupon) => {
+  const handleToggleCouponStatus = (coupon) => {
     const action = coupon.is_active ? "deactivate" : "activate";
-    if (window.confirm(`Are you sure you want to ${action} this coupon?`)) {
+    showConfirm(`Are you sure you want to ${action} this coupon?`, async () => {
       try {
         const token = localStorage.getItem("token");
         // The backend expects a boolean or 0/1. Let's send the opposite of current.
@@ -567,12 +581,12 @@ export default function AdminDashboard() {
         setCoupons(
           coupons.map((c) => (c.id === coupon.id ? updatedCoupon : c)),
         );
-        alert(`Coupon ${action}d successfully!`);
+        showAlert(`Coupon ${action}d successfully!`);
       } catch (error) {
         console.error(`Error ${action}ing coupon:`, error);
-        alert(`Failed to ${action} coupon.`);
+        showAlert(`Failed to ${action} coupon.`);
       }
-    }
+    });
   };
 
   const handleUpdateCoupon = async () => {
@@ -588,15 +602,15 @@ export default function AdminDashboard() {
         coupons.map((c) => (c.id === editingCoupon.id ? response.data : c)),
       );
       setEditingCoupon(null);
-      alert("Coupon updated successfully!");
+      showAlert("Coupon updated successfully!");
     } catch (error) {
       console.error("Error updating coupon:", error);
-      alert(error.response?.data?.error || "Failed to update coupon.");
+      showAlert(error.response?.data?.error || "Failed to update coupon.");
     }
   };
 
-  const handleDeleteCoupon = async (id) => {
-    if (window.confirm("Are you sure you want to delete this coupon?")) {
+  const handleDeleteCoupon = (id) => {
+    showConfirm("Are you sure you want to delete this coupon?", async () => {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.delete(
@@ -606,12 +620,12 @@ export default function AdminDashboard() {
           },
         );
         setCoupons(coupons.filter((c) => c.id !== id));
-        alert("Coupon deleted successfully.");
+        showAlert("Coupon deleted successfully.");
       } catch (error) {
         console.error("Error deleting coupon:", error);
-        alert("Failed to delete coupon.");
+        showAlert("Failed to delete coupon.");
       }
-    }
+    });
   };
 
   if (isLoading) {
@@ -646,7 +660,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-page-wrapper">
-      <AdminNavbar toggleSidebar={toggleSidebar} />
+      <AdminNavbar toggleSidebar={toggleSidebar} showAlert={showAlert} />
       <div className={`admin-layout ${isSidebarOpen ? "sidebar-open" : ""}`}>
         <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -795,6 +809,7 @@ export default function AdminDashboard() {
               <AdminSettings
                 initialSettings={settings}
                 onSettingsSave={setSettings}
+                showAlert={showAlert}
               />
             )}
           </div>
@@ -859,6 +874,52 @@ export default function AdminDashboard() {
           setEditingCoupon={setEditingCoupon}
           handleUpdateCoupon={handleUpdateCoupon}
         />
+      )}
+
+      {modalConfig.isOpen && (
+        <div
+          className="admin-modal-overlay"
+          onClick={closeModal}
+          style={{ zIndex: 10000 }}
+        >
+          <div
+            className="admin-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "400px", textAlign: "center" }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: "15px" }}>
+              {modalConfig.type === "confirm" ? "Confirm Action" : "Notice"}
+            </h3>
+            <p style={{ margin: "0 0 25px", fontSize: "16px", color: "#333" }}>
+              {modalConfig.message}
+            </p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: "15px",
+                width: "100%",
+              }}
+            >
+              {modalConfig.type === "confirm" && (
+                <button
+                  onClick={closeModal}
+                  className="admin-btn-secondary"
+                  style={{ flex: 2, padding: "10px" }}
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                onClick={() => { if (modalConfig.onConfirm) modalConfig.onConfirm(); closeModal(); }}
+                className="admin-btn-primary"
+                style={{ flex: 1, padding: "10px" }}
+              >
+                {modalConfig.type === "confirm" ? "Confirm" : "OK"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <style>{`

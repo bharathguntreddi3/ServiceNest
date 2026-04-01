@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axiosInstance from "../Utils/AxiosInstance";
 import { useSettings } from "../context/SettingsContext";
+import { GoogleLogin } from "@react-oauth/google";
+import { useDispatch } from "react-redux";
+import { login } from "../redux/authSlice";
+import { setCart } from "../redux/cartSlice";
+import toast from "react-hot-toast";
 
 /**
  * Register component.
@@ -24,6 +29,7 @@ export default function Register() {
 
   const { settings, loading } = useSettings();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   async function handleSendOtp() {
     setErrorMessage("");
@@ -156,6 +162,47 @@ export default function Register() {
 
     return () => clearInterval(timer);
   }, [resendTimer]);
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const googleToken = credentialResponse.credential;
+      const response = await axiosInstance.post("http://localhost:3000/api/auth/google", {
+        token: googleToken,
+      });
+      const data = response.data;
+
+      if (data.user?.is_blocked) {
+        setErrorMessage("Your account has been blocked by the admin.");
+        return;
+      }
+
+      dispatch(login(data.user));
+      localStorage.setItem("token", data.token);
+
+      try {
+        const cartResponse = await axiosInstance.get(`http://localhost:3000/api/cart/${data.user.id}`);
+        const frontendCart = cartResponse.data.map((item) => ({
+          id: item.service_id,
+          name: item.service_name,
+          price: Number(item.price),
+          visit: 0,
+        }));
+        dispatch(setCart(frontendCart));
+      } catch (err) {
+        console.error("Error fetching cart during Google sign-in:", err);
+      }
+
+      toast.success("Google sign-in successful!");
+      navigate("/");
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+      setErrorMessage(error.response?.data?.error || "Google Sign-In failed. Please try again.");
+    }
+  };
+
+  const handleGoogleError = () => {
+    setErrorMessage("Google registration was unsuccessful. Please try again.");
+  };
 
   if (loading) {
     return (
@@ -346,6 +393,18 @@ export default function Register() {
             >
               Back
             </button>
+          )}
+
+          {step === 1 && (
+            <>
+              <div className="divider-or" style={{ margin: "5px 0", textAlign: "center", color: "#666", fontSize: "14px", position: "relative" }}>
+                <span style={{ backgroundColor: "white", padding: "0 10px", position: "relative", zIndex: 1 }}>OR</span>
+                <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: "1px", background: "#eee", zIndex: 0 }}></div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+              </div>
+            </>
           )}
         </div>
 
