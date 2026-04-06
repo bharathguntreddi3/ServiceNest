@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaShoppingCart, FaUserCircle } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { logout, login } from "../redux/authSlice";
-import { clearCart } from "../redux/cartSlice";
+import { clearCart, removeFromCart, setCart } from "../redux/cartSlice";
 import logo from "../assets/logo.png";
 import AxiosInstance from "../Utils/AxiosInstance";
 import { useSettings } from "../context/SettingsContext";
@@ -44,6 +44,7 @@ export default function Navbar() {
   const [showUpdateOtpInput, setShowUpdateOtpInput] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const [isResending, setIsResending] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
     if (!showPromoBanner) return;
@@ -327,6 +328,69 @@ export default function Navbar() {
     return now < twoHoursBefore;
   };
 
+  const subtotal = cartItems.reduce(
+    (a, b) => a + (b.price + (b.visit || 0)) * (b.quantity || 1),
+    0
+  );
+
+  const handleUpdateQuantity = async (action, item) => {
+    if (!user) {
+      toast.error("Please login to update quantities.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      let response;
+      if (action === "increment") {
+        response = await AxiosInstance.post(
+          "http://localhost:3000/api/cart/add",
+          { userId: user.id, service: item },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      } else if (action === "decrement") {
+        response = await AxiosInstance.put(
+          "http://localhost:3000/api/cart/decrement",
+          { userId: user.id, serviceId: item.id },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      }
+      if (response && response.data.cart) {
+        const frontendCart = response.data.cart.map((dbItem) => {
+          const existingItem = cartItems.find((i) => i.id === dbItem.service_id);
+          return {
+            ...existingItem,
+            id: dbItem.service_id,
+            name: dbItem.service_name,
+            price: Number(dbItem.price),
+            quantity: dbItem.quantity,
+          };
+        });
+        dispatch(setCart(frontendCart));
+      }
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      toast.error("Failed to update quantity!");
+    }
+  };
+
+  const handleRemoveItem = async (serviceId) => {
+    if (!user) {
+      dispatch(removeFromCart(serviceId));
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      await AxiosInstance.delete(
+        `http://localhost:3000/api/cart/remove/${user.id}/${serviceId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      dispatch(removeFromCart(serviceId));
+    } catch (error) {
+      console.error("Error removing item:", error);
+      toast.error("Failed to remove item!");
+    }
+  };
+
   return (
     <>
       {settings?.enablePromoBanner && showPromoBanner && (
@@ -557,10 +621,10 @@ export default function Navbar() {
                 Login
               </Link>
             )}
-            <Link to="/cart" className="cart-icon">
+            <a className="cart-icon" onClick={() => setIsCartOpen(true)} style={{ cursor: "pointer" }}>
               <FaShoppingCart />
               <span className="cart-badge">{cartItems.length}</span>
-            </Link>
+            </a>
           </div>
         </div>
       </nav>
@@ -957,6 +1021,84 @@ export default function Navbar() {
             </div>
           </div>
         </div>
+      )}
+
+      {isCartOpen && (
+        <>
+          <div className="cart-drawer-overlay" onClick={() => setIsCartOpen(false)}></div>
+          <div className="cart-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-drawer-header">
+              <h2>Your Cart ({cartItems.length})</h2>
+              <button className="cart-drawer-close" onClick={() => setIsCartOpen(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="cart-drawer-body">
+              {cartItems.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#777", marginTop: "40px" }}>
+                  <FaShoppingCart size={40} style={{ opacity: 0.3, marginBottom: "15px" }} />
+                  <p style={{ margin: 0, fontSize: "16px" }}>Your cart is empty!</p>
+                </div>
+              ) : (
+                cartItems.map((item) => (
+                  <div key={item.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid #eee", paddingBottom: "15px" }}>
+                    <div>
+                      <h4 style={{ margin: "0 0 5px 0", color: "#333", fontSize: "16px" }}>{item.name}</h4>
+                      <p style={{ margin: "0 0 10px 0", color: "#ff7a00", fontWeight: "bold" }}>
+                        ₹{(item.price + (item.visit || 0)) * (item.quantity || 1)}
+                      </p>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#fff", border: "1px solid #e0e0e0", padding: "4px 8px", borderRadius: "6px", width: "fit-content" }}>
+                        <button 
+                          onClick={() => handleUpdateQuantity("decrement", item)} 
+                          style={{ width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#ff9800", border: "none", color: "white", fontWeight: "bold", cursor: "pointer", borderRadius: "4px" }}
+                        >
+                          -
+                        </button>
+                        <span style={{ fontSize: "14px", fontWeight: "700", minWidth: "16px", textAlign: "center", color: "#333" }}>{item.quantity || 1}</span>
+                        <button 
+                          onClick={() => handleUpdateQuantity("increment", item)} 
+                          style={{ width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#ff9800", border: "none", color: "white", fontWeight: "bold", cursor: "pointer", borderRadius: "4px" }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleRemoveItem(item.id)} 
+                      style={{ background: "none", border: "none", color: "#ff4d4d", cursor: "pointer", alignSelf: "flex-start", fontSize: "14px", fontWeight: "500", padding: "5px" }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            {cartItems.length > 0 && (
+              <div className="cart-drawer-footer">
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", fontSize: "18px", fontWeight: "bold", color: "#333" }}>
+                  <span>Subtotal:</span>
+                  <span>₹{subtotal}</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <button 
+                    className="login-btn" 
+                    style={{ width: "100%", padding: "12px", fontSize: "16px", textAlign: "center", backgroundColor: "#f5f7fb", color: "#1e6bb8", border: "1px solid #1e6bb8", boxShadow: "none" }} 
+                    onClick={() => { setIsCartOpen(false); navigate("/cart"); }}
+                  >
+                    View Full Cart
+                  </button>
+                  <button 
+                    className="login-btn" 
+                    style={{ width: "100%", padding: "12px", fontSize: "16px", textAlign: "center", backgroundColor: "#28a745", boxShadow: "0 4px 15px rgba(40,167,69,0.3)" }} 
+                    onClick={() => { setIsCartOpen(false); navigate("/schedule"); }}
+                  >
+                    Proceed to Checkout
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </>
   );
