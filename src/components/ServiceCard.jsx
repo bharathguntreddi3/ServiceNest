@@ -114,7 +114,7 @@
 
 
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../redux/cartSlice";
+import { setCart } from "../redux/cartSlice";
 import { useNavigate } from "react-router-dom";
 import AxiosInstance from "../Utils/AxiosInstance";
 import toast from "react-hot-toast";
@@ -125,9 +125,10 @@ export default function ServiceCard({ service }) {
   const cartItems = useSelector((state) => state.cart.items);
   const user = useSelector((state) => state.auth.user);
 
+  const cartItem = cartItems.find((item) => item.id === service.id);
+  const quantity = cartItem ? (cartItem.quantity || 1) : 0;
 
-
-  const handleAddToCart = async () => {
+  const handleUpdateQuantity = async (action) => {
     if (!user) {
       toast.error("Please login to add services to cart!"); 
       setTimeout(() => {
@@ -136,32 +137,47 @@ export default function ServiceCard({ service }) {
       return;
     }
 
-    const isAlreadyInCart = cartItems.some((item) => item.id === service.id);
-
-    if (isAlreadyInCart) {
-      toast.error("Service Already added to the cart!"); 
-    } else {
       try {
         const token = localStorage.getItem("token");
-        await AxiosInstance.post(
-          "http://localhost:3000/api/cart/add",
-          {
-            userId: user.id,
-            service: service, 
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+      let response;
 
-        dispatch(addToCart(service));
-        toast.success("Service Successfully added to cart!"); 
+      if (action === "increment") {
+        response = await AxiosInstance.post(
+          "http://localhost:3000/api/cart/add",
+          { userId: user.id, service: service },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else if (action === "decrement") {
+        response = await AxiosInstance.put(
+          "http://localhost:3000/api/cart/decrement",
+          { userId: user.id, serviceId: service.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      if (response && response.data.cart) {
+        const frontendCart = response.data.cart.map((dbItem) => {
+          const existingItem = cartItems.find((i) => i.id === dbItem.service_id);
+          return {
+            id: dbItem.service_id,
+            name: dbItem.service_name,
+            price: Number(dbItem.price),
+            // Preserve the visit price local state if available
+            visit: existingItem ? existingItem.visit : (service.id === dbItem.service_id ? service.visit : 0),
+            quantity: dbItem.quantity
+          };
+        });
+        dispatch(setCart(frontendCart));
+        
+        if (action === "increment" && quantity === 0) {
+          toast.success("Service Successfully added to cart!"); 
+        }
+      }
 
       } catch (error) {
         console.error("Error adding to database cart:", error.response?.data || error);
         toast.error(error.response?.data?.error || "Failed to save to database!"); 
       }
-    }
   };  
 
   return (
@@ -169,7 +185,15 @@ export default function ServiceCard({ service }) {
       <h3>{service.name}</h3>
       <p>Price: ₹{service.price}</p>
       <p>Visiting Charges: ₹{service.visit}</p>
-      <button onClick={handleAddToCart}>Add to Cart</button>
+      {quantity > 0 ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", marginTop: "10px" }}>
+          <button onClick={() => handleUpdateQuantity("decrement")} style={{ width: "40px", padding: "5px", fontWeight: "bold", fontSize: "18px" }}>-</button>
+          <span style={{ fontSize: "18px", fontWeight: "600" }}>{quantity}</span>
+          <button onClick={() => handleUpdateQuantity("increment")} style={{ width: "40px", padding: "5px", fontWeight: "bold", fontSize: "18px" }}>+</button>
+        </div>
+      ) : (
+        <button onClick={() => handleUpdateQuantity("increment")} style={{ marginTop: "10px" }}>Add to Cart</button>
+      )}
       
       {/*  Deleted the above entire {message && createPortal(...)} block! */}
     </div>

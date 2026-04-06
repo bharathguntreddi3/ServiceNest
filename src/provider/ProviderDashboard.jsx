@@ -13,6 +13,10 @@ export default function ProviderDashboard() {
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [activeRescheduleId, setActiveRescheduleId] = useState(null);
+  const [newTimeSlot, setNewTimeSlot] = useState("");
+  const [oldTimeSlot, setOldTimeSlot] = useState("");
 
   useEffect(() => {
     const fetchAssignedBookings = async () => {
@@ -25,7 +29,7 @@ export default function ProviderDashboard() {
         setBookings(response.data);
       } catch (err) {
         console.error("Error fetching bookings:", err);
-        setError("Failed to load service requests.");
+      setError(err.response?.data?.error || "Failed to load service requests.");
       } finally {
         setIsLoading(false);
       }
@@ -45,15 +49,50 @@ export default function ProviderDashboard() {
       // Update the local state to reflect the change immediately
       setBookings((currentBookings) =>
         currentBookings.map((booking) =>
-          booking.id === bookingId
-            ? { ...booking, status: response.data.status }
+          booking.id === bookingId // Ensure the update includes new data from the response
+            ? { ...booking, status: response.data.status, schedule_time: response.data.schedule_time }
             : booking,
         ),
       );
       toast.success("Booking accepted!");
     } catch (err) {
-      toast.error("Failed to accept the service request.");
+      toast.error(err.response?.data?.error || "Failed to accept the service request.");
       console.error("Error accepting booking:", err);
+    }
+  };
+
+  const handleRescheduleBooking = (bookingId, currentScheduleTime) => {
+    setActiveRescheduleId(bookingId);
+    setOldTimeSlot(currentScheduleTime || "N/A");
+    setNewTimeSlot("");
+    setShowRescheduleModal(true);
+  };
+
+  const confirmReschedule = async () => {
+    if (!newTimeSlot || newTimeSlot.trim() === "") {
+      toast.error("Please provide a valid time slot.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      await AxiosInstance.put(
+        `http://localhost:3000/api/provider/bookings/${activeRescheduleId}/reschedule`,
+        { newTime: newTimeSlot.trim() },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      setBookings((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === activeRescheduleId ? { ...booking, schedule_time: newTimeSlot.trim() } : booking,
+        ),
+      );
+      toast.success("Booking time updated successfully!");
+      setShowRescheduleModal(false);
+      setActiveRescheduleId(null);
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to update booking time.");
+      console.error("Error rescheduling booking:", err);
     }
   };
 
@@ -188,7 +227,7 @@ export default function ProviderDashboard() {
                     </span>
                   </td>
                   <td style={{ padding: "12px 8px" }}>
-                    {booking.status !== "Accepted" && (
+                    {booking.status !== "Accepted" ? (
                       <button
                         onClick={() => handleAcceptBooking(booking.id)}
                         style={{
@@ -204,7 +243,25 @@ export default function ProviderDashboard() {
                       >
                         Accept
                       </button>
-                    )}
+                    ) : booking.status === "Accepted" ? (
+                      <button
+                        onClick={() =>
+                          handleRescheduleBooking(booking.id, booking.schedule_time)
+                        }
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          backgroundColor: "#fd7e14", // Orange color for reschedule
+                          color: "white",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Reschedule
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -220,6 +277,72 @@ export default function ProviderDashboard() {
       >
         Logout
       </button>
+
+      {showRescheduleModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 2000,
+          }}
+          onClick={() => setShowRescheduleModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#fff",
+              padding: "30px",
+              borderRadius: "8px",
+              width: "90%",
+              maxWidth: "400px",
+              boxShadow: "0 4px 15px rgba(0, 0, 0, 0.2)",
+              textAlign: "left",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#333" }}>
+              Reschedule Booking #{activeRescheduleId}
+            </h3>
+            <p style={{ margin: "0 0 15px", fontSize: "14px", color: "#555" }}>
+              Current Slot: <strong>{oldTimeSlot}</strong>
+            </p>
+            <input
+              type="text"
+              placeholder="e.g., 04:00 PM - 05:00 PM"
+              value={newTimeSlot}
+              onChange={(e) => setNewTimeSlot(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: "5px",
+                border: "1px solid #ccc",
+                marginBottom: "20px",
+                boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowRescheduleModal(false)}
+                style={{ padding: "8px 15px", border: "none", borderRadius: "5px", backgroundColor: "#6c757d", color: "white", cursor: "pointer", fontWeight: "bold" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReschedule}
+                style={{ padding: "8px 15px", border: "none", borderRadius: "5px", backgroundColor: "#fd7e14", color: "white", cursor: "pointer", fontWeight: "bold" }}
+              >
+                Confirm Reschedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

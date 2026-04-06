@@ -47,6 +47,7 @@ export default function Login() {
           name: item.service_name,
           price: Number(item.price),
           visit: 0,
+          quantity: item.quantity || 1,
         }));
         dispatch(setCart(frontendCart));
       } catch (err) {
@@ -98,6 +99,7 @@ export default function Login() {
           name: item.service_name,
           price: Number(item.price),
           visit: 0,
+          quantity: item.quantity || 1,
         }));
         dispatch(setCart(frontendCart));
       } catch (err) {

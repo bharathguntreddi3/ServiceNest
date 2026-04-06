@@ -216,3 +216,24 @@ INSERT INTO coupons (code, description, discount_percent) VALUES
 ON DUPLICATE KEY UPDATE code=code;
 
 ALTER TABLE users ADD COLUMN address TEXT DEFAULT NULL;
+
+ALTER TABLE bookings
+ADD COLUMN user_name VARCHAR(100),
+ADD COLUMN address TEXT,
+ADD COLUMN phone VARCHAR(25),
+ADD COLUMN schedule_date DATE,
+ADD COLUMN schedule_time VARCHAR(50),
+ADD COLUMN payment_method VARCHAR(50);
+
+
+select * from bookings;
+select * from cart_items;
+select * from categories;
+select * from coupons;
+select * from popular_services;
+select * from reviews;
+select * from services;
+select * from settings;
+select * from users;
+
+ALTER TABLE bookings ADD COLUMN status VARCHAR(50) DEFAULT 'Pending';

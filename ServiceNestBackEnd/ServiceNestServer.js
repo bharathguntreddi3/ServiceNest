@@ -1098,6 +1098,51 @@ app.post("/api/cart/add", authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @route PUT /api/cart/decrement
+ * @description Decrements the quantity of a cart item, or removes it if quantity is 1
+ * @access Private
+ */
+app.put("/api/cart/decrement", authenticateToken, async (req, res) => {
+  const { userId, serviceId } = req.body;
+
+  if (!userId || !serviceId) {
+    return res.status(400).json({ error: "userId and serviceId are required" });
+  }
+
+  try {
+    const [existing] = await pool.execute(
+      "SELECT quantity FROM cart_items WHERE user_id = ? AND service_id = ?",
+      [userId, serviceId]
+    );
+
+    if (existing.length > 0) {
+      if (existing[0].quantity > 1) {
+        await pool.execute(
+          "UPDATE cart_items SET quantity = quantity - 1 WHERE user_id = ? AND service_id = ?",
+          [userId, serviceId]
+        );
+      } else {
+        await pool.execute(
+          "DELETE FROM cart_items WHERE user_id = ? AND service_id = ?",
+          [userId, serviceId]
+        );
+      }
+    }
+
+    // Fetch the updated cart to return to the frontend
+    const [updatedCart] = await pool.execute(
+      "SELECT * FROM cart_items WHERE user_id = ?",
+      [userId]
+    );
+
+    res.status(200).json({ message: "Quantity decreased", cart: updatedCart });
+  } catch (error) {
+    console.error("Error decrementing cart:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // Remove item from Cart
 app.delete(
   "/api/cart/remove/:userId/:serviceId",
@@ -1280,6 +1325,44 @@ app.put(
 );
 
 /**
+ * @route PUT /api/provider/bookings/:bookingId/reschedule
+ * @description Updates the scheduled time of a specific booking.
+ * @access Private/Provider
+ */
+app.put(
+  "/api/provider/bookings/:bookingId/reschedule",
+  authenticateToken,
+  async (req, res) => {
+    if (req.user.role !== "provider" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Access denied. Providers only." });
+    }
+
+    const { bookingId } = req.params;
+    const { newTime } = req.body;
+
+    if (!newTime) {
+      return res.status(400).json({ error: "New time is required." });
+    }
+
+    try {
+      const [result] = await pool.execute(
+        "UPDATE bookings SET schedule_time = ? WHERE id = ?",
+        [newTime, bookingId],
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: "Booking not found." });
+      }
+
+      res.json({ message: "Booking time updated successfully" });
+    } catch (error) {
+      console.error("Error updating booking time:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+);
+
+/**
  * @route GET /api/bookings/:userId
  * @description Retrieves a user's booking history.
  * @access Private
@@ -1317,14 +1400,44 @@ app.delete("/api/bookings/:userId/:bookingId", authenticateToken, async (req, re
   }
 
   try {
-    // Only allow deletion if the status is Pending (or NULL for older entries)
+    // Fetch the booking to check the time and status constraints
+    const [rows] = await pool.execute(
+      "SELECT schedule_date, schedule_time, status FROM bookings WHERE id = ? AND user_id = ?",
+      [bookingId, userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Booking not found." });
+    }
+
+    const booking = rows[0];
+
+    if (booking.status === 'Completed' || booking.status === 'Cancelled') {
+      return res.status(400).json({ error: "Cannot cancel a completed or already cancelled booking." });
+    }
+
+    if (booking.schedule_date && booking.schedule_time) {
+      const [timePart, modifier] = booking.schedule_time.split(" - ")[0].split(" ");
+      let [hours, minutes] = timePart.split(":").map(Number);
+      if (modifier === "PM" && hours < 12) hours += 12;
+      if (modifier === "AM" && hours === 12) hours = 0;
+
+      const scheduleDateTime = new Date(booking.schedule_date);
+      scheduleDateTime.setHours(hours, minutes, 0, 0);
+
+      const twoHoursBefore = new Date(scheduleDateTime.getTime() - 2 * 60 * 60 * 1000);
+      if (new Date() >= twoHoursBefore) {
+        return res.status(400).json({ error: "Cancellations are only allowed up to 2 hours before the scheduled time." });
+      }
+    }
+
     const [result] = await pool.execute(
-      "DELETE FROM bookings WHERE id = ? AND user_id = ? AND (status = 'Pending' OR status IS NULL)",
+      "DELETE FROM bookings WHERE id = ? AND user_id = ?",
       [bookingId, userId]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(400).json({ error: "Booking not found or has already been accepted by a provider." });
+      return res.status(400).json({ error: "Failed to delete booking." });
     }
 
     res.json({ message: "Booking cancelled successfully" });

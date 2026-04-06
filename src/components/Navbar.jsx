@@ -296,6 +296,37 @@ export default function Navbar() {
     }
   };
 
+  // Function to determine if a booking can be cancelled (only if pending and > 2 hours before slot)
+  const isCancellationAllowed = (booking) => {
+    // Allow cancellation if Pending or Accepted. Do not allow if Completed or Cancelled.
+    if (booking.status === "Completed" || booking.status === "Cancelled") {
+      return false;
+    }
+
+    if (!booking.schedule_date || !booking.schedule_time) {
+      // If schedule info is missing, assume not cancellable via this logic (or can add a different policy)
+      return false;
+    }
+
+    const [timePart, modifier] = booking.schedule_time.split(" - ")[0].split(" "); // e.g., "09:00 AM" -> ["09:00", "AM"]
+    let [hours, minutes] = timePart.split(":").map(Number);
+
+    if (modifier === "PM" && hours < 12) {
+      hours += 12;
+    } else if (modifier === "AM" && hours === 12) {
+      hours = 0; // Midnight 12 AM
+    }
+
+    const scheduleDateTime = new Date(booking.schedule_date);
+    scheduleDateTime.setHours(hours, minutes, 0, 0); // Set to the start of the scheduled slot
+
+    const twoHoursBefore = new Date(scheduleDateTime.getTime() - 2 * 60 * 60 * 1000); // 2 hours in milliseconds
+    const now = new Date();
+
+    // Allow cancellation if the current time is before the 2-hour window prior to the service
+    return now < twoHoursBefore;
+  };
+
   return (
     <>
       {settings?.enablePromoBanner && showPromoBanner && (
@@ -852,34 +883,37 @@ export default function Navbar() {
                       )}
                       {item.status === "Accepted" ? (
                         <span style={{ fontSize: "14px", color: "#28a745", fontWeight: "500", marginTop: "4px" }}>
-                          ✅ Provider Assigned - Will contact you on{" "}
+                          ✅ Provider Assigned - Arriving on{" "}
                           {item.schedule_date
                             ? new Date(item.schedule_date).toLocaleDateString(
                                 undefined,
                                 { year: "numeric", month: "short", day: "numeric" }
                               )
                             : "the scheduled date"}
+                          {" "}between {item.schedule_time || "the scheduled time"}
                         </span>
                       ) : (
                         <span style={{ fontSize: "14px", color: "#d39e00", fontWeight: "500", marginTop: "4px" }}>
                           ⏳ Service Pending
                         </span>
                       )}
-                      {item.status !== "Accepted" && (
+                      {(item.status === "Pending" || item.status === "Accepted" || !item.status) && (
                         <button
                           onClick={() => handleCancelBooking(item.id)}
+                          disabled={!isCancellationAllowed(item)}
                           style={{
                             marginTop: "8px",
                             padding: "6px 12px",
-                            backgroundColor: "#dc3545",
+                            backgroundColor: isCancellationAllowed(item) ? "#dc3545" : "#cccccc",
                             color: "white",
                             border: "none",
                             borderRadius: "5px",
-                            cursor: "pointer",
+                            cursor: isCancellationAllowed(item) ? "pointer" : "not-allowed",
                             fontSize: "12px",
                             fontWeight: "bold",
                             alignSelf: "flex-start"
                           }}
+                          title={isCancellationAllowed(item) ? "Cancel this booking" : "Cancellations are only allowed up to 2 hours before the scheduled time"}
                         >
                           Cancel Booking
                         </button>

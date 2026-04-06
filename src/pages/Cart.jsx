@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { removeFromCart } from "../redux/cartSlice";
+import { removeFromCart, setCart } from "../redux/cartSlice";
 import { useNavigate } from "react-router-dom";
 import AxiosInstance from "../Utils/AxiosInstance";
 import CheckoutStepper from "../components/CheckoutStepper";
+import toast from "react-hot-toast";
 
 /**
  * Cart component
@@ -12,6 +13,7 @@ import CheckoutStepper from "../components/CheckoutStepper";
  */
 export default function Cart() {
   const cart = useSelector((state) => state.cart.items);
+  const user = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [couponCode, setCouponCode] = useState("");
@@ -31,8 +33,12 @@ export default function Cart() {
     fetchCoupons();
   }, []);
 
-  // calculate total cost of the cart
-  const subtotal = cart.reduce((a, b) => a + b.price + b.visit, 0);
+  // calculate total cost and quantity of the cart
+  const subtotal = cart.reduce(
+    (a, b) => a + (b.price + b.visit) * (b.quantity || 1),
+    0,
+  );
+  const totalItems = cart.reduce((a, b) => a + (b.quantity || 1), 0);
   const discountAmount = Math.round((subtotal * discountPercent) / 100);
   const finalTotal = subtotal + 9 - discountAmount;
 
@@ -63,6 +69,63 @@ export default function Cart() {
     }
   };
 
+  const handleUpdateQuantity = async (action, item) => {
+    if (!user) return;
+    try {
+      const token = localStorage.getItem("token");
+      let response;
+      if (action === "increment") {
+        response = await AxiosInstance.post(
+          "http://localhost:3000/api/cart/add",
+          { userId: user.id, service: item },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      } else if (action === "decrement") {
+        response = await AxiosInstance.put(
+          "http://localhost:3000/api/cart/decrement",
+          { userId: user.id, serviceId: item.id },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      }
+      if (response && response.data.cart) {
+        const frontendCart = response.data.cart.map((dbItem) => {
+          const existingItem = cart.find((i) => i.id === dbItem.service_id);
+          return {
+            ...existingItem,
+            id: dbItem.service_id,
+            name: dbItem.service_name,
+            price: Number(dbItem.price),
+            quantity: dbItem.quantity,
+          };
+        });
+        dispatch(setCart(frontendCart));
+      }
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      toast.error("Failed to update quantity!");
+    }
+  };
+
+  const handleRemoveItem = async (serviceId) => {
+    if (!user) {
+      dispatch(removeFromCart(serviceId));
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      await AxiosInstance.delete(
+        `http://localhost:3000/api/cart/remove/${user.id}/${serviceId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      dispatch(removeFromCart(serviceId));
+    } catch (error) {
+      console.error("Error removing item:", error);
+      toast.error("Failed to remove item!");
+    }
+  };
+
   return (
     <div className="container cart-page">
       <CheckoutStepper currentStep={1} />
@@ -89,13 +152,92 @@ export default function Cart() {
                 <div className="cart-item-info">
                   <h3>{item.name}</h3>
                   <p>Service</p>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      marginTop: "10px",
+                      backgroundColor: "#fff",
+                      padding: "4px 8px",
+                      borderRadius: "6px",
+                      border: "1px solid #e0e0e0",
+                      width: "fit-content",
+                    }}
+                  >
+                    <button
+                      onClick={() => handleUpdateQuantity("decrement", item)}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        padding: "0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                        cursor: "pointer",
+                        background: "#ff9800",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = "#f57c00";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = "#ff9800";
+                      }}
+                    >
+                      -
+                    </button>
+                    <span
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: "700",
+                        minWidth: "20px",
+                        textAlign: "center",
+                        color: "#333",
+                      }}
+                    >
+                      {item.quantity || 1}
+                    </span>
+                    <button
+                      onClick={() => handleUpdateQuantity("increment", item)}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        padding: "0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                        cursor: "pointer",
+                        background: "#ff9800",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = "#f57c00";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = "#ff9800";
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 <div className="cart-item-price">
-                  ₹{item.price + item.visit}
+                  ₹{(item.price + item.visit) * (item.quantity || 1)}
                 </div>
                 <button
                   className="remove-btn"
-                  onClick={() => dispatch(removeFromCart(item.id))}
+                  onClick={() => handleRemoveItem(item.id)}
                 >
                   Remove
                 </button>
@@ -106,7 +248,7 @@ export default function Cart() {
           <div className="cart-summary" data-aos="fade-left">
             <h3>Order Summary</h3>
             <div className="summary-row">
-              <span>Items ({cart.length})</span>
+              <span>Items ({totalItems})</span>
               <span>₹{subtotal}</span>
             </div>
             <div className="summary-row">

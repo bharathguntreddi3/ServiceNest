@@ -145,6 +145,8 @@ export default function AdminUsers({
                       className={`role-badge ${
                         user.role?.toLowerCase() === "admin"
                           ? "role-admin"
+                        : user.role?.toLowerCase() === "provider"
+                        ? "role-provider"
                           : "role-user"
                       }`}
                     >
@@ -250,6 +252,10 @@ export default function AdminUsers({
         }
         .status-active { background-color: #28a745; }
         .status-blocked { background-color: #dc3545; }
+        .role-provider { 
+          background-color: #ffc107; /* Yellow */
+          color: #212529; /* Dark text for contrast */
+        }
         .admin-table-wrapper {
           overflow-x: auto; /* Makes table scrollable on small screens */
         }

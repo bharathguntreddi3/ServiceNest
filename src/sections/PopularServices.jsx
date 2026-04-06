@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../redux/cartSlice";
+import { setCart } from "../redux/cartSlice";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -68,7 +68,7 @@ export default function PopularServices() {
     fetchPopularServices();
   }, []);
 
-  const handleAddToCart = async (service, index) => {
+  const handleUpdateQuantity = async (action, service, index) => {
     if (!user) {
       toast.error("Please login to add services to cart!");
       setTimeout(() => {
@@ -78,47 +78,61 @@ export default function PopularServices() {
     }
 
     const serviceId = service.id || 1000 + index;
-    const isAlreadyInCart = cartItems.some((item) => item.id === serviceId);
+    const cartItem = cartItems.find((item) => item.id === serviceId);
+    const quantity = cartItem ? cartItem.quantity || 1 : 0;
 
-    if (isAlreadyInCart) {
-      toast.error("Service Already added to the cart!");
-    } else {
-      const serviceObj = {
-        id: serviceId,
-        name: service.name,
-        price:
-          typeof service.price === "string"
-            ? parseInt(service.price.replace("₹", ""))
-            : service.price || 0,
-        visit: 0,
-      };
+    const serviceObj = {
+      id: serviceId,
+      name: service.name,
+      price:
+        typeof service.price === "string"
+          ? parseInt(service.price.replace("₹", ""))
+          : service.price || 0,
+      visit: 0,
+    };
 
-      try {
-        const token = localStorage.getItem("token");
-        await axios.post(
+    try {
+      const token = localStorage.getItem("token");
+      let response;
+      if (action === "increment") {
+        response = await axios.post(
           "http://localhost:3000/api/cart/add",
-          {
-            userId: user.id,
-            service: serviceObj,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
+          { userId: user.id, service: serviceObj },
+          { headers: { Authorization: `Bearer ${token}` } },
         );
-
-        dispatch(addToCart(serviceObj));
-        toast.success("Service Successfully added to cart!");
-      } catch (error) {
-        console.error(
-          "Error adding to database cart:",
-          error.response?.data || error,
-        );
-        toast.error(
-          error.response?.data?.error || "Failed to save to database!",
+      } else if (action === "decrement") {
+        response = await axios.put(
+          "http://localhost:3000/api/cart/decrement",
+          { userId: user.id, serviceId: serviceId },
+          { headers: { Authorization: `Bearer ${token}` } },
         );
       }
+
+      if (response && response.data.cart) {
+        const frontendCart = response.data.cart.map((dbItem) => {
+          const existingItem = cartItems.find(
+            (i) => i.id === dbItem.service_id,
+          );
+          return {
+            id: dbItem.service_id,
+            name: dbItem.service_name,
+            price: Number(dbItem.price),
+            visit: existingItem ? existingItem.visit : 0,
+            quantity: dbItem.quantity,
+          };
+        });
+        dispatch(setCart(frontendCart));
+
+        if (action === "increment" && quantity === 0) {
+          toast.success("Service Successfully added to cart!");
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Error adding to database cart:",
+        error.response?.data || error,
+      );
+      toast.error(error.response?.data?.error || "Failed to save to database!");
     }
   };
 
@@ -129,33 +143,110 @@ export default function PopularServices() {
           Popular Services
         </h2>
         <div className="service-grid">
-          {services.map((service, index) => (
-            <div
-              className="service-card"
-              key={index}
-              data-aos="fade-up"
-              data-aos-delay={index * 100}
-            >
-              <div className="service-image">
-                <img
-                  src={service.image_url || service.image}
-                  alt={service.name}
-                />
+          {services.map((service, index) => {
+            const serviceId = service.id || 1000 + index;
+            const cartItem = cartItems.find((item) => item.id === serviceId);
+            const quantity = cartItem ? cartItem.quantity || 1 : 0;
+
+            return (
+              <div
+                className="service-card"
+                key={index}
+                data-aos="fade-up"
+                data-aos-delay={index * 100}
+              >
+                <div className="service-image">
+                  <img
+                    src={service.image_url || service.image}
+                    alt={service.name}
+                  />
+                </div>
+                <div className="service-info">
+                  <h3>{service.name}</h3>
+                  <p className="price">
+                    ₹
+                    {typeof service.price === "number"
+                      ? `₹${service.price}`
+                      : service.price}
+                  </p>
+                  {quantity > 0 ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "10px",
+                        marginTop: "10px",
+                      }}
+                    >
+                      <button
+                        onClick={() =>
+                          handleUpdateQuantity("decrement", service, index)
+                        }
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          padding: "0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: "bold",
+                          fontSize: "18px",
+                          background: "#ff9800",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        -
+                      </button>
+                      <span
+                        style={{
+                          fontSize: "16px",
+                          fontWeight: "700",
+                          minWidth: "20px",
+                          textAlign: "center",
+                          color: "#333",
+                        }}
+                      >
+                        {quantity}
+                      </span>
+                      <button
+                        onClick={() =>
+                          handleUpdateQuantity("increment", service, index)
+                        }
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          padding: "0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: "bold",
+                          fontSize: "18px",
+                          background: "#ff9800",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        handleUpdateQuantity("increment", service, index)
+                      }
+                      style={{ marginTop: "10px" }}
+                    >
+                      Add to Cart
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="service-info">
-                <h3>{service.name}</h3>
-                <p className="price">
-                  ₹
-                  {typeof service.price === "number"
-                    ? `₹${service.price}`
-                    : service.price}
-                </p>
-                <button onClick={() => handleAddToCart(service, index)}>
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
