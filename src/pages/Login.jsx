@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { login } from "../redux/authSlice";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import AxiosInstance from "../Utils/AxiosInstance";
 import { setCart } from "../redux/cartSlice";
 import toast from "react-hot-toast";
@@ -13,6 +13,8 @@ export default function Login() {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const pendingAction = location.state;
 
   async function handleLogin() {
     if (!email || !password) {
@@ -38,6 +40,22 @@ export default function Login() {
       dispatch(login(data.user));
       localStorage.setItem("token", data.token);
 
+      // Process pending action (e.g. Add to Cart)
+      if (pendingAction?.action === "addToCart" && pendingAction?.service) {
+        try {
+          await AxiosInstance.post(
+            "http://localhost:3000/api/cart/add",
+            { userId: data.user.id, service: pendingAction.service },
+            { headers: { Authorization: `Bearer ${data.token}` } },
+          );
+          toast.success(
+            `${pendingAction.service.name} was automatically added to your cart!`,
+          );
+        } catch (err) {
+          console.error("Failed to process pending cart addition:", err);
+        }
+      }
+
       try {
         const cartResponse = await AxiosInstance.get(
           `http://localhost:3000/api/cart/${data.user.id}`,
@@ -55,7 +73,9 @@ export default function Login() {
       }
 
       toast.success("Welcome back!");
-      if (data.user?.role?.toLowerCase() === "admin") {
+      if (pendingAction?.returnTo) {
+        navigate(pendingAction.returnTo);
+      } else if (data.user?.role?.toLowerCase() === "admin") {
         navigate("/admin");
       } else if (data.user?.role?.toLowerCase() === "provider") {
         navigate("/provider");
@@ -90,6 +110,22 @@ export default function Login() {
       dispatch(login(data.user));
       localStorage.setItem("token", data.token);
 
+      // Process pending action (e.g. Add to Cart)
+      if (pendingAction?.action === "addToCart" && pendingAction?.service) {
+        try {
+          await AxiosInstance.post(
+            "http://localhost:3000/api/cart/add",
+            { userId: data.user.id, service: pendingAction.service },
+            { headers: { Authorization: `Bearer ${data.token}` } },
+          );
+          toast.success(
+            `${pendingAction.service.name} was automatically added to your cart!`,
+          );
+        } catch (err) {
+          console.error("Failed to process pending cart addition:", err);
+        }
+      }
+
       try {
         const cartResponse = await AxiosInstance.get(
           `http://localhost:3000/api/cart/${data.user.id}`,
@@ -107,7 +143,9 @@ export default function Login() {
       }
 
       toast.success("Google sign-in successful!");
-      if (data.user?.role?.toLowerCase() === "admin") {
+      if (pendingAction?.returnTo) {
+        navigate(pendingAction.returnTo);
+      } else if (data.user?.role?.toLowerCase() === "admin") {
         navigate("/admin");
       } else if (data.user?.role?.toLowerCase() === "provider") {
         navigate("/provider");
@@ -214,7 +252,10 @@ export default function Login() {
           </div>
         </div>
         <div className="auth-links">
-          Don't have an account? <Link to="/register">Register here</Link>
+          Don't have an account?{" "}
+          <Link to="/register" state={pendingAction}>
+            Register here
+          </Link>
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import Navbar from "./components/Navbar";
 
+import ProtectedRoute from "./components/ProtectedRoute";
 import HomeSearch from "./pages/HomeSearch";
 import CategoryPage from "./pages/CategoryPage";
 import Cart from "./pages/Cart";
@@ -82,9 +83,14 @@ function App() {
           {/* Core application pages */}
           <Route path="/search" element={<HomeSearch />} />
           <Route path="/category/:id" element={<CategoryPage />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/payment" element={<Payment />} />
+
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/payment" element={<Payment />} />
+          </Route>
+
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/register" element={<Register />} />

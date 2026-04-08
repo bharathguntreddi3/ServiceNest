@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "../Utils/AxiosInstance";
 import { useSettings } from "../context/SettingsContext";
 import { GoogleLogin } from "@react-oauth/google";
@@ -29,6 +29,8 @@ export default function Register() {
 
   const { settings, loading } = useSettings();
   const navigate = useNavigate();
+  const location = useLocation();
+  const pendingAction = location.state;
   const dispatch = useDispatch();
 
   async function handleSendOtp() {
@@ -139,7 +141,7 @@ export default function Register() {
 
       setSuccessMessage("Registration successful! Redirecting to login...");
       setTimeout(() => {
-        navigate("/login");
+        navigate("/login", { state: pendingAction });
       }, 1500);
     } catch (error) {
       console.error("Error connecting to the server:", error);
@@ -166,9 +168,12 @@ export default function Register() {
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const googleToken = credentialResponse.credential;
-      const response = await axiosInstance.post("http://localhost:3000/api/auth/google", {
-        token: googleToken,
-      });
+      const response = await axiosInstance.post(
+        "http://localhost:3000/api/auth/google",
+        {
+          token: googleToken,
+        },
+      );
       const data = response.data;
 
       if (data.user?.is_blocked) {
@@ -179,8 +184,26 @@ export default function Register() {
       dispatch(login(data.user));
       localStorage.setItem("token", data.token);
 
+      // Process pending action (e.g. Add to Cart)
+      if (pendingAction?.action === "addToCart" && pendingAction?.service) {
+        try {
+          await axiosInstance.post(
+            "http://localhost:3000/api/cart/add",
+            { userId: data.user.id, service: pendingAction.service },
+            { headers: { Authorization: `Bearer ${data.token}` } },
+          );
+          toast.success(
+            `${pendingAction.service.name} was automatically added to your cart!`,
+          );
+        } catch (err) {
+          console.error("Failed to process pending cart addition:", err);
+        }
+      }
+
       try {
-        const cartResponse = await axiosInstance.get(`http://localhost:3000/api/cart/${data.user.id}`);
+        const cartResponse = await axiosInstance.get(
+          `http://localhost:3000/api/cart/${data.user.id}`,
+        );
         const frontendCart = cartResponse.data.map((item) => ({
           id: item.service_id,
           name: item.service_name,
@@ -194,10 +217,17 @@ export default function Register() {
       }
 
       toast.success("Google sign-in successful!");
-      navigate("/");
+      if (pendingAction?.returnTo) {
+        navigate(pendingAction.returnTo);
+      } else {
+        navigate("/");
+      }
     } catch (error) {
       console.error("Google Sign-In Error:", error);
-      setErrorMessage(error.response?.data?.error || "Google Sign-In failed. Please try again.");
+      setErrorMessage(
+        error.response?.data?.error ||
+          "Google Sign-In failed. Please try again.",
+      );
     }
   };
 
@@ -398,19 +428,53 @@ export default function Register() {
 
           {step === 1 && (
             <>
-              <div className="divider-or" style={{ margin: "5px 0", textAlign: "center", color: "#666", fontSize: "14px", position: "relative" }}>
-                <span style={{ backgroundColor: "white", padding: "0 10px", position: "relative", zIndex: 1 }}>OR</span>
-                <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: "1px", background: "#eee", zIndex: 0 }}></div>
+              <div
+                className="divider-or"
+                style={{
+                  margin: "5px 0",
+                  textAlign: "center",
+                  color: "#666",
+                  fontSize: "14px",
+                  position: "relative",
+                }}
+              >
+                <span
+                  style={{
+                    backgroundColor: "white",
+                    padding: "0 10px",
+                    position: "relative",
+                    zIndex: 1,
+                  }}
+                >
+                  OR
+                </span>
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: 0,
+                    right: 0,
+                    height: "1px",
+                    background: "#eee",
+                    zIndex: 0,
+                  }}
+                ></div>
               </div>
               <div style={{ display: "flex", justifyContent: "center" }}>
-                <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                />
               </div>
             </>
           )}
         </div>
 
         <div className="auth-links">
-          Already have an account? <Link to="/login">Login here</Link>
+          Already have an account?{" "}
+          <Link to="/login" state={pendingAction}>
+            Login here
+          </Link>
         </div>
         <style>{`
           .resend-otp-btn {

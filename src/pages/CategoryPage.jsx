@@ -95,13 +95,15 @@ export default function CategoryPage() {
           fontSize: "36px",
           marginBottom: "40px",
         }}
-        data-aos="fade-down"
       >
-        {category.category}
+        {category.name ||
+          category.category ||
+          category.title ||
+          "Category Services"}
       </h2>
       <div className="grid">
-        {category.items && category.items.length > 0 ? (
-          category.items.map((service) => (
+        {(category.items || category.services || []).length > 0 ? (
+          (category.items || category.services).map((service) => (
             <ServiceCard key={service.id} service={service} />
           ))
         ) : (

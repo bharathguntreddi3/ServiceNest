@@ -4,6 +4,31 @@ import axios from "axios";
 
 // After search this page pops up
 
+function ImageWithSkeleton({ src, alt }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      {!loaded && <div className="skeleton-placeholder"></div>}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          opacity: loaded ? 1 : 0,
+          transition: "opacity 0.3s ease",
+          position: "relative",
+          zIndex: 2,
+        }}
+      />
+    </div>
+  );
+}
+
 export default function Home() {
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("search") || "");
@@ -67,7 +92,7 @@ export default function Home() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button style={{ pointerEvents: "none" }}>Search</button>
+          {/* <button style={{ pointerEvents: "none" }}>Search</button> */}
         </div>
       </div>
 
@@ -89,11 +114,7 @@ export default function Home() {
                   borderRadius: "12px 12px 0 0",
                 }}
               >
-                <img
-                  src={cat.image}
-                  alt={cat.category}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
+                <ImageWithSkeleton src={cat.image} alt={cat.category} />
               </div>
 
               <div
