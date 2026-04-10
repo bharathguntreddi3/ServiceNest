@@ -1025,6 +1025,7 @@ font-size: 18px;
   .nav-actions {
     width: 100%;
     justify-content: center;
+    flex-wrap: wrap;
   }
 
   .categories, .services, .stats, .cart-page {
@@ -1056,6 +1057,60 @@ font-size: 18px;
 
   .empty-cart {
     padding: 40px 20px;
+  }
+
+  .add-review-container {
+    padding: 15px;
+  }
+
+  .stat-card {
+    padding: 30px 20px;
+  }
+}
+
+/* --- EXTRA SMALL MOBILE (e.g., iPhone SE & narrow devices) --- */
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 26px;
+  }
+  
+  .hero p {
+    font-size: 15px;
+  }
+
+  .hero-search input {
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+
+  .stat-card h2 {
+    font-size: 32px;
+  }
+
+  .auth-card {
+    padding: 20px 15px;
+  }
+
+  .auth-card h2 {
+    font-size: 22px;
+  }
+
+  .reviews-scroll-container .card {
+    min-width: 250px;
+    max-width: 100%;
+  }
+
+  .grid, .category-grid, .service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .time-slot-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 }
 
@@ -1316,6 +1371,7 @@ font-size: 18px;
 @media (max-width: 600px) {
   .step-label {
     font-size: 12px;
+    top: 40px;
   }
   .step-circle {
     width: 30px;

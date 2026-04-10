@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -6,6 +7,8 @@ const { OAuth2Client } = require("google-auth-library");
 const pool = require("./db");
 const authenticateToken = require("./authMiddleware");
 const asyncHandler = require("./asyncHandler");
+
+const { strictRateLimiter } = require("./rateLimiter");
 
 const authrouter = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -26,9 +29,11 @@ const transporter = nodemailer.createTransport({
 const registrationOtpStore = {};
 const profileUpdateOtpStore = {};
 
-
 // send otp to register new user
-authrouter.post("/register/send-otp", asyncHandler(async (req, res) => {
+authrouter.post(
+  "/register/send-otp",
+  strictRateLimiter,
+  asyncHandler(async (req, res) => {
     const { email, phone } = req.body;
     if (!email || !phone) {
       return res.status(400).json({ error: "Email and phone are required" });
@@ -38,7 +43,8 @@ authrouter.post("/register/send-otp", asyncHandler(async (req, res) => {
       "SELECT setting_value FROM settings WHERE setting_key = 'enableRegistration'",
     );
     // value to boolean
-    const enableRegistration = regSettings.length > 0 && regSettings[0].setting_value === "true";
+    const enableRegistration =
+      regSettings.length > 0 && regSettings[0].setting_value === "true";
 
     if (!enableRegistration) {
       return res
@@ -67,7 +73,7 @@ authrouter.post("/register/send-otp", asyncHandler(async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     registrationOtpStore[cleanEmail] = {
       otp,
-      expires: Date.now() + 5 * 60 * 1000,  // 5-min expiry
+      expires: Date.now() + 5 * 60 * 1000, // 5-min expiry
     };
 
     const mailOptions = {
@@ -92,7 +98,10 @@ authrouter.post("/register/send-otp", asyncHandler(async (req, res) => {
 );
 
 // Handle registration
-authrouter.post("/register", asyncHandler(async (req, res) => {
+authrouter.post(
+  "/register",
+  strictRateLimiter,
+  asyncHandler(async (req, res) => {
     const { name, email, password, phone, otp } = req.body;
 
     if (!email || !password || !phone || !otp) {
@@ -145,10 +154,10 @@ authrouter.post("/register", asyncHandler(async (req, res) => {
         settingsRows.length > 0 ? `${settingsRows[0].setting_value}m` : "60m";
 
       const token = jwt.sign(
-        { 
-          id: result.insertId, 
-          email: cleanEmail, 
-          role: "user" 
+        {
+          id: result.insertId,
+          email: cleanEmail,
+          role: "user",
         },
         process.env.JWT_SECRET || "default_secret_key",
         { expiresIn: sessionTimeout },
@@ -187,7 +196,10 @@ authrouter.post("/register", asyncHandler(async (req, res) => {
 );
 
 // Handle login
-authrouter.post("/login", asyncHandler(async (req, res) => {
+authrouter.post(
+  "/login",
+  strictRateLimiter,
+  asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
@@ -215,11 +227,14 @@ authrouter.post("/login", asyncHandler(async (req, res) => {
       user.is_blocked === "true";
     if (isBlocked) {
       return res.status(403).json({
-        error: "Your account has been blocked by the admin. Please contact the support team.",
+        error:
+          "Your account has been blocked by the admin. Please contact the support team.",
       });
     }
 
-    await pool.execute("UPDATE users SET last_login = NOW() WHERE id = ?", [user.id,]);
+    await pool.execute("UPDATE users SET last_login = NOW() WHERE id = ?", [
+      user.id,
+    ]);
 
     const [settingsRows] = await pool.execute(
       "SELECT * FROM settings WHERE setting_key = 'sessionTimeout'",
@@ -253,8 +268,10 @@ authrouter.post("/login", asyncHandler(async (req, res) => {
   }),
 );
 
-// login with google 
-authrouter.post("/auth/google", asyncHandler(async (req, res) => {
+// login with google
+authrouter.post(
+  "/auth/google",
+  asyncHandler(async (req, res) => {
     const { token } = req.body;
     if (!token) {
       return res.status(400).json({ error: "Google token is required." });
@@ -275,12 +292,16 @@ authrouter.post("/auth/google", asyncHandler(async (req, res) => {
     const { name, email } = payload;
     const cleanEmail = email.trim().toLowerCase();
 
-    const [users] = await pool.execute("SELECT * FROM users WHERE email = ?", [cleanEmail,]);
+    const [users] = await pool.execute("SELECT * FROM users WHERE email = ?", [
+      cleanEmail,
+    ]);
     let user = users[0];
 
     if (!user) {
-      // generate a random password if the user doesn't exist in the db  
-      const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      // generate a random password if the user doesn't exist in the db
+      const randomPassword =
+        Math.random().toString(36).slice(-8) +
+        Math.random().toString(36).slice(-8);
       const hashedPassword = await bcrypt.hash(randomPassword, 12);
 
       const [result] = await pool.execute(
@@ -302,11 +323,14 @@ authrouter.post("/auth/google", asyncHandler(async (req, res) => {
       user.is_blocked === "true";
     if (isBlocked) {
       return res.status(403).json({
-        error:"Your account has been blocked by the admin. Please contact support.",
+        error:
+          "Your account has been blocked by the admin. Please contact support.",
       });
     }
 
-    await pool.execute("UPDATE users SET last_login = NOW() WHERE id = ?", [user.id,]);
+    await pool.execute("UPDATE users SET last_login = NOW() WHERE id = ?", [
+      user.id,
+    ]);
 
     const [settingsRows] = await pool.execute(
       "SELECT * FROM settings WHERE setting_key = 'sessionTimeout'",
@@ -341,13 +365,18 @@ authrouter.post("/auth/google", asyncHandler(async (req, res) => {
 );
 
 // Send OTP to update user
-authrouter.post("/user/:userId/send-update-otp", authenticateToken, asyncHandler(async (req, res) => {
+authrouter.post(
+  "/user/:userId/send-update-otp",
+  authenticateToken,
+  asyncHandler(async (req, res) => {
     const { userId } = req.params;
     if (req.user.id.toString() !== userId.toString()) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    const [rows] = await pool.execute("SELECT email FROM users WHERE id = ?", [userId,]);
+    const [rows] = await pool.execute("SELECT email FROM users WHERE id = ?", [
+      userId,
+    ]);
     if (rows.length === 0)
       return res.status(404).json({ error: "User not found" });
 
@@ -382,7 +411,10 @@ authrouter.post("/user/:userId/send-update-otp", authenticateToken, asyncHandler
 );
 
 // Update User
-authrouter.put("/user/:userId", authenticateToken, asyncHandler(async (req, res) => {
+authrouter.put(
+  "/user/:userId",
+  authenticateToken,
+  asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const { name, email, phone, address, otp } = req.body;
 
@@ -414,7 +446,8 @@ authrouter.put("/user/:userId", authenticateToken, asyncHandler(async (req, res)
       if (currentUserRows.length > 0 && requireOtp) {
         const currentUser = currentUserRows[0];
         if (
-          currentUser.email !== cleanEmail || currentUser.phone !== cleanPhone
+          currentUser.email !== cleanEmail ||
+          currentUser.phone !== cleanPhone
         ) {
           if (!otp)
             return res
@@ -491,7 +524,10 @@ authrouter.put("/user/:userId", authenticateToken, asyncHandler(async (req, res)
 );
 
 // Delete User
-authrouter.delete("/user/:userId", authenticateToken, asyncHandler(async (req, res) => {
+authrouter.delete(
+  "/user/:userId",
+  authenticateToken,
+  asyncHandler(async (req, res) => {
     const { userId } = req.params;
     if (req.user.id.toString() !== userId.toString()) {
       return res

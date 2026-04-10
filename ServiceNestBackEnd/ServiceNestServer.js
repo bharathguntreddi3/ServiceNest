@@ -11,24 +11,35 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
+const rateLimit = require("express-rate-limit");
+
 const forgotPasswordRoutes = require("./forgotPasswordRoutes");
 const authRoutes = require("./authRoutes");
 const adminRoutes = require("./adminRoutes");
 const shopRoutes = require("./shopRoutes");
 const publicRoutes = require("./publicRoutes");
 
+const { strictRateLimiter, globalLimiter } = require("./rateLimiter");
+
+// Create an Express application
 const app = express();
 const port = process.env.PORT;
 
+// Trust the reverse proxy if you are deploying behind one
+app.set("trust proxy", 1);
+
 // Enable CORS so that our FrontEnd can communicate with this API
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: process.env.FrontEnd_URL }));
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
 
+// Apply global rate limiter to all routes
+app.use("/api", globalLimiter);
+
 // Forgot Password Routes
 // Mount the separated forgot password router, passing the db pool to it
-app.use("/api/forgot-password", forgotPasswordRoutes(pool));
+app.use("/api/forgot-password", strictRateLimiter, forgotPasswordRoutes(pool));
 
 app.use("/api", authRoutes);
 app.use("/api/admin", adminRoutes);
