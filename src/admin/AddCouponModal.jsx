@@ -7,10 +7,7 @@ export default function AddCouponModal({
   setIsAddingCoupon,
 }) {
   return (
-    <div
-      className="admin-modal-overlay"
-      onClick={() => setIsAddingCoupon(false)}
-    >
+    <div className="admin-modal-overlay" onClick={() => setIsAddingCoupon(false)} >
       <div className="admin-modal-content" onClick={(e) => e.stopPropagation()}>
         <h3 style={{ marginTop: 0, color: "var(--primary)" }}>
           Add New Coupon

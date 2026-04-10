@@ -5,25 +5,33 @@ import {
   useLocation,
   Outlet,
 } from "react-router-dom";
+
 import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
-import Navbar from "./components/Navbar";
+import { lazy } from "react";
+import {Suspense} from "react";
 
-import ProtectedRoute from "./components/ProtectedRoute";
-import HomeSearch from "./pages/HomeSearch";
-import CategoryPage from "./pages/CategoryPage";
-import Cart from "./pages/Cart";
-import Schedule from "./pages/Schedule";
-import Payment from "./pages/Payment";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+// Initial user loading components - loaded immediately when application is opened
 import Landing from "./pages/Landing";
-import AdminLogin from "./pages/AdminLogin";
-import ForgotPassword from "./pages/ForgotPassword";
-import NotFound from "./pages/NotFound"; // Assuming you have a 404 page component
+import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-import AdminDashboard from "./admin/AdminDashboard";
-import ProviderDashboard from "./provider/ProviderDashboard";
+//  These components to be loaded when their specific routes are accessed
+const HomeSearch = lazy(()=> import("./pages/HomeSearch"));
+const CategoryPage = lazy(()=>import("./pages/CategoryPage"));
+const Cart = lazy(()=>import("./pages/Cart"));
+const Schedule = lazy(()=>import("./pages/Schedule"));
+const Payment = lazy(()=>import("./pages/Payment"));
+const Login = lazy(()=>import("./pages/Login"));
+const Register = lazy(()=>import("./pages/Register"));
+const ForgotPassword = lazy(()=>import("./pages/ForgotPassword"));
+const NotFound = lazy(()=>import("./pages/NotFound"));
+
+const AdminLogin = lazy(()=>import("./pages/AdminLogin"));
+const AdminDashboard = lazy(()=>import("./admin/AdminDashboard"));
+
+const ProviderDashboard = lazy(()=>import("./provider/ProviderDashboard"));
+
 
 // Utility component to handle scrolling to top and refreshing AOS animations on route change
 function ScrollAndAOS() {
@@ -40,6 +48,8 @@ function ScrollAndAOS() {
   return null;
 }
 
+// lazy() - loads components when needed
+// suspense - wraps the lazy loaded components
 // Layout component to include the Navbar on specific routes
 function MainLayout() {
   return (
@@ -49,6 +59,13 @@ function MainLayout() {
     </>
   );
 }
+
+// Loading.. shows when any routes takes too long to load/download
+const PageLoader = () =>(
+  <div className="loader-container">
+    <div className="simple-spinner" aria-label="Loading..."></div>
+  </div>
+);
 
 function App() {
   // Initialize AOS once when the app component mounts
@@ -74,34 +91,36 @@ function App() {
           },
         }}
       />
-      <Routes>
-        {/* Routes wrapped in MainLayout will display the Navbar */}
-        <Route element={<MainLayout />}>
-          {/* Public and marketing pages */}
-          <Route path="/" element={<Landing />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Routes wrapped in MainLayout will display the Navbar */}
+          <Route element={<MainLayout />}>
+            {/* Public and marketing pages */}
+            <Route path="/" element={<Landing />} />
 
-          {/* Core application pages */}
-          <Route path="/search" element={<HomeSearch />} />
-          <Route path="/category/:id" element={<CategoryPage />} />
+            {/* Core application pages */}
+            <Route path="/search" element={<HomeSearch />} />
+            <Route path="/category/:id" element={<CategoryPage />} />
 
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/schedule" element={<Schedule />} />
-            <Route path="/payment" element={<Payment />} />
+            {/* Protected Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/schedule" element={<Schedule />} />
+              <Route path="/payment" element={<Payment />} />
+            </Route>
+
+            <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/register" element={<Register />} />
           </Route>
-
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/register" element={<Register />} />
-        </Route>
-        {/* Admin Dashboard route left outside of MainLayout so it won't display the Navbar */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/provider" element={<ProviderDashboard />} />
-        {/* Route left outside of MainLayout will NOT display the Navbar */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          {/* Admin Dashboard route left outside of MainLayout so it won't display the Navbar */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/provider" element={<ProviderDashboard />} />
+          {/* Route left outside of MainLayout will NOT display the Navbar */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

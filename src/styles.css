@@ -1550,7 +1550,7 @@ font-size: 18px;
   to { opacity: 1; }
 }
 
-/* --- SKELETON LOADER --- */
+/* SKELETON LOADER */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -1569,4 +1569,27 @@ font-size: 18px;
   position: absolute;
   top: 0;
   left: 0;
+}
+
+/* Page Loader */
+.loader-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+}
+
+/* Spinner Animation */
+.simple-spinner {
+  width: 45px;
+  height: 45px;
+  border: 5px solid #e0e0e0; 
+  border-top: 5px solid #1e6bb8;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
