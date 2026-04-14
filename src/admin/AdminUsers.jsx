@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { formatCurrency } from "../utils/formatters";
+import { formatCurrency } from "../Utils/formatters";
 import { FaEdit, FaBan, FaUnlock, FaTrash, FaDownload } from "react-icons/fa";
 
 export default function AdminUsers({
