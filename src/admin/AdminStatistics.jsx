@@ -28,7 +28,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { formatCurrency } from "../utils/formatters";
+import { formatCurrency } from "../Utils/formatters";
 
 const AnimatedNumber = ({ value, formatter }) => {
   const [displayValue, setDisplayValue] = useState(0);
