@@ -33,10 +33,15 @@ export default function Categories() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await AxiosInstance.get(
-          "http://localhost:3000/api/categories",
-        );
-        setCategories(response.data);
+        const response = await AxiosInstance.get("/api/categories");
+        // Ensure that we only set an array to the state
+        if (Array.isArray(response.data)) {
+          setCategories(response.data);
+        } else if (response.data && Array.isArray(response.data.categories)) {
+          setCategories(response.data.categories); // Sometimes APIs wrap the array inside an object
+        } else {
+          setCategories([]); // Fallback to an empty array
+        }
       } catch (error) {
         console.error("Error fetching categories:", error);
       }
@@ -52,30 +57,32 @@ export default function Categories() {
         </h2>
 
         <div className="category-grid">
-          {categories.map((cat, index) => {
-            const Icon = categoryIcons[cat.name] || FaTools;
+          {/* Defensively check if categories is an array before mapping */}
+          {Array.isArray(categories) &&
+            categories.map((cat, index) => {
+              const Icon = categoryIcons[cat.name] || FaTools;
 
-            return (
-              <div
-                className="category-card"
-                key={cat.id}
-                onClick={() => navigate(`/category/${cat.id}`)}
-                style={{ cursor: "pointer" }}
-                data-aos="zoom-in"
-                data-aos-delay={index * 100}
-              >
-                <img src={cat.image} alt={cat.name} />
+              return (
+                <div
+                  className="category-card"
+                  key={cat.id}
+                  onClick={() => navigate(`/category/${cat.id}`)}
+                  style={{ cursor: "pointer" }}
+                  data-aos="zoom-in"
+                  data-aos-delay={index * 100}
+                >
+                  <img src={cat.image} alt={cat.name} />
 
-                <div className="category-overlay">
-                  <div className="category-icon">
-                    <Icon />
+                  <div className="category-overlay">
+                    <div className="category-icon">
+                      <Icon />
+                    </div>
+
+                    <h3>{cat.name}</h3>
                   </div>
-
-                  <h3>{cat.name}</h3>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       </div>
     </section>

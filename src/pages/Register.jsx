@@ -68,7 +68,7 @@ export default function Register() {
     setIsSubmitting(true);
     try {
       const response = await axiosInstance.post(
-        "http://localhost:3000/api/register/send-otp",
+        "/api/register/send-otp",
         {
           email: email.trim(),
           phone: `${countryCode}${phone.trim()}`,
@@ -94,7 +94,7 @@ export default function Register() {
     setSuccessMessage("");
     try {
       const response = await axiosInstance.post(
-        "http://localhost:3000/api/register/send-otp",
+        "/api/register/send-otp",
         {
           email: email.trim(),
           phone: `${countryCode}${phone.trim()}`,
@@ -128,16 +128,13 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      const response = await axiosInstance.post(
-        "http://localhost:3000/api/register",
-        {
-          name: name.trim(),
-          email: email.trim(),
-          password: password.trim(),
-          phone: `${countryCode}${phone.trim()}`,
-          otp: otp.trim(),
-        },
-      );
+      const response = await axiosInstance.post("/api/register", {
+        name: name.trim(),
+        email: email.trim(),
+        password: password.trim(),
+        phone: `${countryCode}${phone.trim()}`,
+        otp: otp.trim(),
+      });
 
       setSuccessMessage("Registration successful! Redirecting to login...");
       setTimeout(() => {
@@ -169,7 +166,7 @@ export default function Register() {
     try {
       const googleToken = credentialResponse.credential;
       const response = await axiosInstance.post(
-        "http://localhost:3000/api/auth/google",
+        "/api/auth/google",
         {
           token: googleToken,
         },
@@ -188,7 +185,7 @@ export default function Register() {
       if (pendingAction?.action === "addToCart" && pendingAction?.service) {
         try {
           await axiosInstance.post(
-            "http://localhost:3000/api/cart/add",
+            "/api/cart/add",
             { userId: data.user.id, service: pendingAction.service },
             { headers: { Authorization: `Bearer ${data.token}` } },
           );
@@ -202,7 +199,7 @@ export default function Register() {
 
       try {
         const cartResponse = await axiosInstance.get(
-          `http://localhost:3000/api/cart/${data.user.id}`,
+          `/api/cart/${data.user.id}`,
         );
         const frontendCart = cartResponse.data.map((item) => ({
           id: item.service_id,

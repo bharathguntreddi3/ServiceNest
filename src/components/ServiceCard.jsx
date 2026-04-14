@@ -49,7 +49,7 @@
 //       try {
 //         const token = localStorage.getItem("token");
 //         await AxiosInstance.post(
-//           "http://localhost:3000/api/cart/add",
+//           "/api/cart/add",
 //           {
 //             userId: user.id,
 //             service: service, // The service object from props is already in the correct format
@@ -147,13 +147,13 @@ export default function ServiceCard({ service }) {
 
       if (action === "increment") {
         response = await AxiosInstance.post(
-          "http://localhost:3000/api/cart/add",
+          "/api/cart/add",
           { userId: user.id, service: service },
           { headers: { Authorization: `Bearer ${token}` } },
         );
       } else if (action === "decrement") {
         response = await AxiosInstance.put(
-          "http://localhost:3000/api/cart/decrement",
+          "/api/cart/decrement",
           { userId: user.id, serviceId: service.id },
           { headers: { Authorization: `Bearer ${token}` } },
         );

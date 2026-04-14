@@ -22,14 +22,15 @@ export default function ProviderDashboard() {
     const fetchAssignedBookings = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await AxiosInstance.get(
-          "http://localhost:3000/api/provider/bookings",
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
+        const response = await AxiosInstance.get("/api/provider/bookings", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setBookings(response.data);
       } catch (err) {
         console.error("Error fetching bookings:", err);
-      setError(err.response?.data?.error || "Failed to load service requests.");
+        setError(
+          err.response?.data?.error || "Failed to load service requests.",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -41,7 +42,7 @@ export default function ProviderDashboard() {
     try {
       const token = localStorage.getItem("token");
       const response = await AxiosInstance.put(
-        `http://localhost:3000/api/provider/bookings/${bookingId}/status`,
+        `/api/provider/bookings/${bookingId}/status`,
         { status: "Accepted" },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -50,13 +51,19 @@ export default function ProviderDashboard() {
       setBookings((currentBookings) =>
         currentBookings.map((booking) =>
           booking.id === bookingId // Ensure the update includes new data from the response
-            ? { ...booking, status: response.data.status, schedule_time: response.data.schedule_time }
+            ? {
+                ...booking,
+                status: response.data.status,
+                schedule_time: response.data.schedule_time,
+              }
             : booking,
         ),
       );
       toast.success("Booking accepted!");
     } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to accept the service request.");
+      toast.error(
+        err.response?.data?.error || "Failed to accept the service request.",
+      );
       console.error("Error accepting booking:", err);
     }
   };
@@ -77,21 +84,25 @@ export default function ProviderDashboard() {
     try {
       const token = localStorage.getItem("token");
       await AxiosInstance.put(
-        `http://localhost:3000/api/provider/bookings/${activeRescheduleId}/reschedule`,
+        `/api/provider/bookings/${activeRescheduleId}/reschedule`,
         { newTime: newTimeSlot.trim() },
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setBookings((currentBookings) =>
         currentBookings.map((booking) =>
-          booking.id === activeRescheduleId ? { ...booking, schedule_time: newTimeSlot.trim() } : booking,
+          booking.id === activeRescheduleId
+            ? { ...booking, schedule_time: newTimeSlot.trim() }
+            : booking,
         ),
       );
       toast.success("Booking time updated successfully!");
       setShowRescheduleModal(false);
       setActiveRescheduleId(null);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to update booking time.");
+      toast.error(
+        err.response?.data?.error || "Failed to update booking time.",
+      );
       console.error("Error rescheduling booking:", err);
     }
   };
@@ -246,7 +257,10 @@ export default function ProviderDashboard() {
                     ) : booking.status === "Accepted" ? (
                       <button
                         onClick={() =>
-                          handleRescheduleBooking(booking.id, booking.schedule_time)
+                          handleRescheduleBooking(
+                            booking.id,
+                            booking.schedule_time,
+                          )
                         }
                         style={{
                           padding: "6px 12px",
@@ -326,16 +340,38 @@ export default function ProviderDashboard() {
                 boxSizing: "border-box",
               }}
             />
-            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                justifyContent: "flex-end",
+              }}
+            >
               <button
                 onClick={() => setShowRescheduleModal(false)}
-                style={{ padding: "8px 15px", border: "none", borderRadius: "5px", backgroundColor: "#6c757d", color: "white", cursor: "pointer", fontWeight: "bold" }}
+                style={{
+                  padding: "8px 15px",
+                  border: "none",
+                  borderRadius: "5px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={confirmReschedule}
-                style={{ padding: "8px 15px", border: "none", borderRadius: "5px", backgroundColor: "#fd7e14", color: "white", cursor: "pointer", fontWeight: "bold" }}
+                style={{
+                  padding: "8px 15px",
+                  border: "none",
+                  borderRadius: "5px",
+                  backgroundColor: "#fd7e14",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
               >
                 Confirm Reschedule
               </button>

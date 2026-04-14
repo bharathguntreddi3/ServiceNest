@@ -76,13 +76,13 @@ export default function Cart() {
       let response;
       if (action === "increment") {
         response = await AxiosInstance.post(
-          "http://localhost:3000/api/cart/add",
+          "/api/cart/add",
           { userId: user.id, service: item },
           { headers: { Authorization: `Bearer ${token}` } },
         );
       } else if (action === "decrement") {
         response = await AxiosInstance.put(
-          "http://localhost:3000/api/cart/decrement",
+          "/api/cart/decrement",
           { userId: user.id, serviceId: item.id },
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -114,7 +114,7 @@ export default function Cart() {
     try {
       const token = localStorage.getItem("token");
       await AxiosInstance.delete(
-        `http://localhost:3000/api/cart/remove/${user.id}/${serviceId}`,
+        `/api/cart/remove/${user.id}/${serviceId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },

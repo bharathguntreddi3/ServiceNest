@@ -22,13 +22,10 @@ export default function AdminLogin() {
     }
 
     try {
-      const response = await AxiosInstance.post(
-        "http://localhost:3000/api/login",
-        {
-          email,
-          password,
-        },
-      );
+      const response = await AxiosInstance.post("/api/login", {
+        email,
+        password,
+      });
 
       const { user, token } = response.data;
 

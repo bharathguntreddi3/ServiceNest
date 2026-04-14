@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+// import axios from "axios";
+import AxiosInstance from "../Utils/AxiosInstance";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -25,8 +26,8 @@ export default function ForgotPassword() {
 
     try {
       // Call backend to verify if the user exists and send OTP
-      const response = await axios.post(
-        "http://localhost:3000/api/forgot-password/send-otp",
+      const response = await AxiosInstance.post(
+        "/api/forgot-password/send-otp",
         { email },
       );
       setMessage(response.data.message || `An OTP has been sent to ${email}.`);
@@ -61,8 +62,8 @@ export default function ForgotPassword() {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:3000/api/forgot-password/reset-password",
+      const response = await AxiosInstance.post(
+        "/api/forgot-password/reset-password",
         { email, otp, newPassword },
       );
       setMessage(response.data.message);

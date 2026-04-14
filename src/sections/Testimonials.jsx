@@ -22,10 +22,14 @@ export default function Testimonials() {
 
   const fetchReviews = async () => {
     try {
-      const response = await AxiosInstance.get(
-        "http://localhost:3000/api/reviews",
-      );
-      setReviews(response.data);
+      const response = await AxiosInstance.get("/api/reviews");
+      if (Array.isArray(response.data)) {
+        setReviews(response.data);
+      } else if (response.data && Array.isArray(response.data.reviews)) {
+        setReviews(response.data.reviews);
+      } else {
+        setReviews([]);
+      }
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
     }
@@ -43,7 +47,7 @@ export default function Testimonials() {
     if (!newReview.trim()) return;
 
     try {
-      await AxiosInstance.post("http://localhost:3000/api/reviews", {
+      await AxiosInstance.post("/api/reviews", {
         userId: user.id,
         name: user.name,
         review: newReview,
@@ -63,7 +67,7 @@ export default function Testimonials() {
 
   // Auto-scrolling effect for an infinite feel
   useEffect(() => {
-    if (reviews.length === 0 || isPaused) return;
+    if (!Array.isArray(reviews) || reviews.length === 0 || isPaused) return;
 
     const intervalId = setInterval(() => {
       scroll("right");
@@ -144,7 +148,7 @@ export default function Testimonials() {
           </p>
         )}
 
-        {reviews.length > 0 ? (
+        {Array.isArray(reviews) && reviews.length > 0 ? (
           <div
             className="reviews-wrapper"
             data-aos="fade-up"
@@ -160,20 +164,23 @@ export default function Testimonials() {
               <FaChevronLeft />
             </button>
             <div className="reviews-scroll-container" ref={scrollRef}>
-              {reviews.map((review, index) => (
-                <div className="card" key={review.id || index}>
-                  <div className="stars">
-                    {[...Array(5)].map((_, i) => (
-                      <FaStar
-                        key={i}
-                        color={i < (review.rating || 5) ? "#ffb400" : "#e4e5e9"}
-                      />
-                    ))}
+              {Array.isArray(reviews) &&
+                reviews.map((review, index) => (
+                  <div className="card" key={review.id || index}>
+                    <div className="stars">
+                      {[...Array(5)].map((_, i) => (
+                        <FaStar
+                          key={i}
+                          color={
+                            i < (review.rating || 5) ? "#ffb400" : "#e4e5e9"
+                          }
+                        />
+                      ))}
+                    </div>
+                    <p>"{review.review}"</p>
+                    <h4>- {review.name}</h4>
                   </div>
-                  <p>"{review.review}"</p>
-                  <h4>- {review.name}</h4>
-                </div>
-              ))}
+                ))}
             </div>
             <button
               className="scroll-arrow right"

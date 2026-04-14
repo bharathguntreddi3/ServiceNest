@@ -15,7 +15,7 @@ export default function CategoryPage() {
     const fetchCategory = async () => {
       try {
         const response = await AxiosInstance.get(
-          `http://localhost:3000/api/categories/${id}/services`,
+          `/api/categories/${id}/services`,
         );
         if (response.data) {
           setCategory(response.data);

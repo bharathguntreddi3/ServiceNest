@@ -23,13 +23,10 @@ export default function Login() {
     }
 
     try {
-      const response = await AxiosInstance.post(
-        "http://localhost:3000/api/login",
-        {
-          email: email.trim(),
-          password: password.trim(),
-        },
-      );
+      const response = await AxiosInstance.post("/api/login", {
+        email: email.trim(),
+        password: password.trim(),
+      });
       const data = response.data;
 
       if (data.user?.is_blocked) {
@@ -44,7 +41,7 @@ export default function Login() {
       if (pendingAction?.action === "addToCart" && pendingAction?.service) {
         try {
           await AxiosInstance.post(
-            "http://localhost:3000/api/cart/add",
+            "/api/cart/add",
             { userId: data.user.id, service: pendingAction.service },
             { headers: { Authorization: `Bearer ${data.token}` } },
           );
@@ -58,7 +55,7 @@ export default function Login() {
 
       try {
         const cartResponse = await AxiosInstance.get(
-          `http://localhost:3000/api/cart/${data.user.id}`,
+          `/api/cart/${data.user.id}`,
         );
         const frontendCart = cartResponse.data.map((item) => ({
           id: item.service_id,
@@ -95,7 +92,7 @@ export default function Login() {
     try {
       const googleToken = credentialResponse.credential;
       const response = await AxiosInstance.post(
-        "http://localhost:3000/api/auth/google",
+        "/api/auth/google",
         {
           token: googleToken,
         },
@@ -114,7 +111,7 @@ export default function Login() {
       if (pendingAction?.action === "addToCart" && pendingAction?.service) {
         try {
           await AxiosInstance.post(
-            "http://localhost:3000/api/cart/add",
+            "/api/cart/add",
             { userId: data.user.id, service: pendingAction.service },
             { headers: { Authorization: `Bearer ${data.token}` } },
           );
@@ -128,7 +125,7 @@ export default function Login() {
 
       try {
         const cartResponse = await AxiosInstance.get(
-          `http://localhost:3000/api/cart/${data.user.id}`,
+          `/api/cart/${data.user.id}`,
         );
         const frontendCart = cartResponse.data.map((item) => ({
           id: item.service_id,

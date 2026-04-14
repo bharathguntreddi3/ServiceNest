@@ -93,11 +93,23 @@ export default function AdminDashboard() {
   };
 
   const showAlert = (message, onClose = null) => {
-    setModalConfig({ isOpen: true, type: "alert", message, onClose, onConfirm: null });
+    setModalConfig({
+      isOpen: true,
+      type: "alert",
+      message,
+      onClose,
+      onConfirm: null,
+    });
   };
 
   const showConfirm = (message, onConfirm) => {
-    setModalConfig({ isOpen: true, type: "confirm", message, onConfirm, onClose: null });
+    setModalConfig({
+      isOpen: true,
+      type: "confirm",
+      message,
+      onConfirm,
+      onClose: null,
+    });
   };
 
   const closeModal = () => {
@@ -168,7 +180,9 @@ export default function AdminDashboard() {
       const token = localStorage.getItem("token");
       if (!token) {
         setError("Authentication failed. Please log in as an admin."); // Set error state
-        showAlert("Access Denied: Admins only. Please log in first.", () => navigate("/admin/login"));
+        showAlert("Access Denied: Admins only. Please log in first.", () =>
+          navigate("/admin/login"),
+        );
         return;
       }
 
@@ -177,10 +191,9 @@ export default function AdminDashboard() {
       try {
         // Fetch Users
         try {
-          const resUsers = await AxiosInstance.get(
-            "http://localhost:3000/api/admin/users",
-            { headers },
-          );
+          const resUsers = await AxiosInstance.get("/api/admin/users", {
+            headers,
+          });
           setUsers(Array.isArray(resUsers.data) ? resUsers.data : []);
         } catch (error) {
           console.error("Error fetching users:", error);
@@ -192,10 +205,9 @@ export default function AdminDashboard() {
 
         // Fetch Bookings
         try {
-          const resBookings = await AxiosInstance.get(
-            "http://localhost:3000/api/admin/bookings",
-            { headers },
-          );
+          const resBookings = await AxiosInstance.get("/api/admin/bookings", {
+            headers,
+          });
           setBookings(Array.isArray(resBookings.data) ? resBookings.data : []);
         } catch (error) {
           console.error("Error fetching bookings:", error);
@@ -203,10 +215,9 @@ export default function AdminDashboard() {
 
         // Fetch Reviews
         try {
-          const resReviews = await AxiosInstance.get(
-            "http://localhost:3000/api/admin/reviews",
-            { headers },
-          );
+          const resReviews = await AxiosInstance.get("/api/admin/reviews", {
+            headers,
+          });
           setReviews(Array.isArray(resReviews.data) ? resReviews.data : []);
         } catch (error) {
           console.error("Error fetching reviews:", error);
@@ -215,7 +226,7 @@ export default function AdminDashboard() {
         // Fetch Popular Services
         try {
           const resPopularServices = await AxiosInstance.get(
-            "http://localhost:3000/api/popular-services",
+            "/api/popular-services",
             { headers },
           );
           setPopularServices(
@@ -229,10 +240,9 @@ export default function AdminDashboard() {
 
         // Fetch Services
         try {
-          const resServices = await AxiosInstance.get(
-            "http://localhost:3000/api/admin/services",
-            { headers },
-          );
+          const resServices = await AxiosInstance.get("/api/admin/services", {
+            headers,
+          });
           setServices(Array.isArray(resServices.data) ? resServices.data : []);
         } catch (error) {
           console.error("Error fetching services:", error);
@@ -240,10 +250,9 @@ export default function AdminDashboard() {
 
         // Fetch Coupons
         try {
-          const resCoupons = await AxiosInstance.get(
-            "http://localhost:3000/api/admin/coupons",
-            { headers },
-          );
+          const resCoupons = await AxiosInstance.get("/api/admin/coupons", {
+            headers,
+          });
           setCoupons(Array.isArray(resCoupons.data) ? resCoupons.data : []);
         } catch (error) {
           console.error("Error fetching coupons:", error);
@@ -251,9 +260,7 @@ export default function AdminDashboard() {
 
         // Fetch Categories for the "Add Service" dropdown
         try {
-          const resCategories = await AxiosInstance.get(
-            "http://localhost:3000/api/categories",
-          );
+          const resCategories = await AxiosInstance.get("/api/categories");
           setCategories(
             Array.isArray(resCategories.data) ? resCategories.data : [],
           );
@@ -263,9 +270,7 @@ export default function AdminDashboard() {
 
         // Fetch Settings
         try {
-          const resSettings = await AxiosInstance.get(
-            "http://localhost:3000/api/settings",
-          );
+          const resSettings = await AxiosInstance.get("/api/settings");
           setSettings(resSettings.data);
         } catch (error) {
           console.error("Error fetching settings:", error);
@@ -274,7 +279,7 @@ export default function AdminDashboard() {
         // Fetch Statistics
         try {
           const resStatistics = await AxiosInstance.get(
-            "http://localhost:3000/api/admin/statistics",
+            "/api/admin/statistics",
             { headers },
           );
           setStatistics(resStatistics.data);
@@ -300,12 +305,9 @@ export default function AdminDashboard() {
     showConfirm("Are you sure you want to delete this user?", async () => {
       try {
         const token = localStorage.getItem("token");
-        await AxiosInstance.delete(
-          `http://localhost:3000/api/admin/users/${id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        await AxiosInstance.delete(`/api/admin/users/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setUsers(users.filter((user) => user.id !== id));
       } catch (error) {
         console.error("Error deleting user:", error);
@@ -320,7 +322,7 @@ export default function AdminDashboard() {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.put(
-          `http://localhost:3000/api/admin/users/${editingUser.id}`,
+          `/api/admin/users/${editingUser.id}`,
           editingUser,
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -342,13 +344,9 @@ export default function AdminDashboard() {
       try {
         const token = localStorage.getItem("token");
         const updatedUser = { ...user, is_blocked: !user.is_blocked };
-        await AxiosInstance.put(
-          `http://localhost:3000/api/admin/users/${user.id}`,
-          updatedUser,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        await AxiosInstance.put(`/api/admin/users/${user.id}`, updatedUser, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setUsers(users.map((u) => (u.id === user.id ? updatedUser : u)));
       } catch (error) {
         setError(`Failed to ${action} user.`);
@@ -360,36 +358,36 @@ export default function AdminDashboard() {
 
   const handleToggleServiceStatus = (service) => {
     const action = service.is_active ? "deactivate" : "activate";
-    showConfirm(`Are you sure you want to ${action} this service?`, async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const updatedService = { ...service, is_active: !service.is_active };
-        await AxiosInstance.put(
-          `http://localhost:3000/api/admin/services/${service.id}`,
-          updatedService,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        setServices(
-          services.map((s) => (s.id === service.id ? updatedService : s)),
-        );
-        showAlert(`Service ${action}d successfully!`);
-      } catch (error) {
-        console.error(`Error ${action}ing service:`, error);
-        showAlert(`Failed to ${action} service.`);
-      }
-    });
+    showConfirm(
+      `Are you sure you want to ${action} this service?`,
+      async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const updatedService = { ...service, is_active: !service.is_active };
+          await AxiosInstance.put(
+            `/api/admin/services/${service.id}`,
+            updatedService,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          setServices(
+            services.map((s) => (s.id === service.id ? updatedService : s)),
+          );
+          showAlert(`Service ${action}d successfully!`);
+        } catch (error) {
+          console.error(`Error ${action}ing service:`, error);
+          showAlert(`Failed to ${action} service.`);
+        }
+      },
+    );
   };
 
   const handleDeleteService = (id) => {
     showConfirm("Are you sure you want to delete this service?", async () => {
       try {
         const token = localStorage.getItem("token");
-        await AxiosInstance.delete(
-          `http://localhost:3000/api/admin/services/${id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        await AxiosInstance.delete(`/api/admin/services/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setServices(services.filter((svc) => svc.id !== id));
       } catch (error) {
         setError("Failed to delete service."); // Set error state for user feedback
@@ -404,7 +402,7 @@ export default function AdminDashboard() {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.put(
-          `http://localhost:3000/api/admin/services/${editingService.id}`,
+          `/api/admin/services/${editingService.id}`,
           editingService,
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -423,44 +421,49 @@ export default function AdminDashboard() {
   };
 
   const handleDeletePopularService = (id) => {
-    showConfirm("Are you sure you want to delete this popular service?", async () => {
-      try {
-        const token = localStorage.getItem("token");
-        await AxiosInstance.delete(
-          `http://localhost:3000/api/admin/popular-services/${id}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        setPopularServices(popularServices.filter((svc) => svc.id !== id));
-      } catch (error) {
-        setError("Failed to delete popular service.");
-        console.error("Error deleting popular service:", error);
-        showAlert("Failed to delete popular service.");
-      }
-    });
+    showConfirm(
+      "Are you sure you want to delete this popular service?",
+      async () => {
+        try {
+          const token = localStorage.getItem("token");
+          await AxiosInstance.delete(`/api/admin/popular-services/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setPopularServices(popularServices.filter((svc) => svc.id !== id));
+        } catch (error) {
+          setError("Failed to delete popular service.");
+          console.error("Error deleting popular service:", error);
+          showAlert("Failed to delete popular service.");
+        }
+      },
+    );
   };
 
   const handleSavePopularServiceEdit = () => {
     if (!editingPopularService) return;
-    showConfirm("Do you confirm saving changes to this popular service?", async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await AxiosInstance.put(
-          `http://localhost:3000/api/admin/popular-services/${editingPopularService.id}`,
-          editingPopularService,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        setPopularServices(
-          popularServices.map((svc) =>
-            svc.id === editingPopularService.id ? response.data : svc,
-          ),
-        );
-        setEditingPopularService(null);
-        showAlert("Popular service updated successfully!");
-      } catch (error) {
-        console.error("Error updating popular service:", error);
-        showAlert("Failed to update popular service.");
-      }
-    });
+    showConfirm(
+      "Do you confirm saving changes to this popular service?",
+      async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const response = await AxiosInstance.put(
+            `/api/admin/popular-services/${editingPopularService.id}`,
+            editingPopularService,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          setPopularServices(
+            popularServices.map((svc) =>
+              svc.id === editingPopularService.id ? response.data : svc,
+            ),
+          );
+          setEditingPopularService(null);
+          showAlert("Popular service updated successfully!");
+        } catch (error) {
+          console.error("Error updating popular service:", error);
+          showAlert("Failed to update popular service.");
+        }
+      },
+    );
   };
 
   const handleAddPopularService = async () => {
@@ -475,14 +478,14 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("token");
       await AxiosInstance.post(
-        "http://localhost:3000/api/admin/popular-services",
+        "/api/admin/popular-services",
         newPopularService,
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
       // Refetch to see the new service
       const resPopularServices = await AxiosInstance.get(
-        "http://localhost:3000/api/popular-services",
+        "/api/popular-services",
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setPopularServices(
@@ -514,7 +517,7 @@ export default function AdminDashboard() {
       let token = localStorage.getItem("token");
       // Save to database
       const response = await AxiosInstance.post(
-        "http://localhost:3000/api/admin/services",
+        "/api/admin/services",
         newService,
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -527,7 +530,7 @@ export default function AdminDashboard() {
 
       // Refetch services to instantly show the new addition with the correct category name
       const resServices = await AxiosInstance.get(
-        "http://localhost:3000/api/admin/services",
+        "/api/admin/services",
         { headers: { Authorization: `Bearer ${token}` } }, // Use the potentially new token
       );
       setServices(Array.isArray(resServices.data) ? resServices.data : []);
@@ -552,7 +555,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("token");
       const response = await AxiosInstance.post(
-        "http://localhost:3000/api/admin/coupons",
+        "/api/admin/coupons",
         newCoupon,
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -574,7 +577,7 @@ export default function AdminDashboard() {
         // The backend expects a boolean or 0/1. Let's send the opposite of current.
         const updatedCoupon = { ...coupon, is_active: !coupon.is_active };
         await AxiosInstance.put(
-          `http://localhost:3000/api/admin/coupons/${coupon.id}`,
+          `/api/admin/coupons/${coupon.id}`,
           updatedCoupon,
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -594,7 +597,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("token");
       const response = await AxiosInstance.put(
-        `http://localhost:3000/api/admin/coupons/${editingCoupon.id}`,
+        `/api/admin/coupons/${editingCoupon.id}`,
         editingCoupon,
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -613,12 +616,9 @@ export default function AdminDashboard() {
     showConfirm("Are you sure you want to delete this coupon?", async () => {
       try {
         const token = localStorage.getItem("token");
-        await AxiosInstance.delete(
-          `http://localhost:3000/api/admin/coupons/${id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        await AxiosInstance.delete(`/api/admin/coupons/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setCoupons(coupons.filter((c) => c.id !== id));
         showAlert("Coupon deleted successfully.");
       } catch (error) {
@@ -911,7 +911,10 @@ export default function AdminDashboard() {
                 </button>
               )}
               <button
-                onClick={() => { if (modalConfig.onConfirm) modalConfig.onConfirm(); closeModal(); }}
+                onClick={() => {
+                  if (modalConfig.onConfirm) modalConfig.onConfirm();
+                  closeModal();
+                }}
                 className="admin-btn-primary"
                 style={{ flex: 1, padding: "10px" }}
               >

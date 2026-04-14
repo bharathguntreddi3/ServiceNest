@@ -12,9 +12,7 @@ export const SettingsProvider = ({ children }) => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await AxiosInstance.get(
-          "http://localhost:3000/api/settings",
-        );
+        const response = await AxiosInstance.get("/api/settings");
         setSettings(response.data);
       } catch (error) {
         console.error("Failed to fetch global settings:", error);

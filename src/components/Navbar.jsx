@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FaShoppingCart, FaUserCircle } from "react-icons/fa";
+import { FaShoppingCart, FaUserCircle, FaBars, FaTimes } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { logout, login } from "../redux/authSlice";
 import { clearCart, removeFromCart, setCart } from "../redux/cartSlice";
@@ -45,6 +45,7 @@ export default function Navbar() {
   const [resendTimer, setResendTimer] = useState(0);
   const [isResending, setIsResending] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!showPromoBanner) return;
@@ -152,12 +153,9 @@ export default function Navbar() {
         setIsLoadingServices(true);
         try {
           const token = localStorage.getItem("token");
-          const response = await AxiosInstance.get(
-            `http://localhost:3000/api/bookings/${user.id}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          );
+          const response = await AxiosInstance.get(`/api/bookings/${user.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
           setBookedServices(response.data);
         } catch (error) {
           console.error("Error fetching booked services:", error);
@@ -178,8 +176,8 @@ export default function Navbar() {
     try {
       const token = localStorage.getItem("token");
       await AxiosInstance.delete(
-        `http://localhost:3000/api/bookings/${user.id}/${bookingToCancel}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `/api/bookings/${user.id}/${bookingToCancel}`,
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       setBookedServices((prev) => prev.filter((b) => b.id !== bookingToCancel));
       toast.success("Booking cancelled successfully!");
@@ -199,12 +197,9 @@ export default function Navbar() {
     ) {
       try {
         const token = localStorage.getItem("token");
-        await AxiosInstance.delete(
-          `http://localhost:3000/api/user/${user.id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        await AxiosInstance.delete(`/api/user/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         handleLogout();
         setShowSettingsModal(false);
       } catch (error) {
@@ -232,7 +227,7 @@ export default function Navbar() {
       try {
         const token = localStorage.getItem("token");
         await AxiosInstance.post(
-          `http://localhost:3000/api/user/${user.id}/send-update-otp`,
+          `/api/user/${user.id}/send-update-otp`,
           {},
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -259,7 +254,7 @@ export default function Navbar() {
     try {
       const token = localStorage.getItem("token");
       const response = await AxiosInstance.put(
-        `http://localhost:3000/api/user/${user.id}`,
+        `/api/user/${user.id}`,
         { name: editName, email: editEmail, phone: editPhone, otp: updateOtp },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -283,7 +278,7 @@ export default function Navbar() {
     try {
       const token = localStorage.getItem("token");
       await AxiosInstance.post(
-        `http://localhost:3000/api/user/${user.id}/send-update-otp`,
+        `/api/user/${user.id}/send-update-otp`,
         {},
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -309,7 +304,9 @@ export default function Navbar() {
       return false;
     }
 
-    const [timePart, modifier] = booking.schedule_time.split(" - ")[0].split(" "); // e.g., "09:00 AM" -> ["09:00", "AM"]
+    const [timePart, modifier] = booking.schedule_time
+      .split(" - ")[0]
+      .split(" "); // e.g., "09:00 AM" -> ["09:00", "AM"]
     let [hours, minutes] = timePart.split(":").map(Number);
 
     if (modifier === "PM" && hours < 12) {
@@ -321,7 +318,9 @@ export default function Navbar() {
     const scheduleDateTime = new Date(booking.schedule_date);
     scheduleDateTime.setHours(hours, minutes, 0, 0); // Set to the start of the scheduled slot
 
-    const twoHoursBefore = new Date(scheduleDateTime.getTime() - 2 * 60 * 60 * 1000); // 2 hours in milliseconds
+    const twoHoursBefore = new Date(
+      scheduleDateTime.getTime() - 2 * 60 * 60 * 1000,
+    ); // 2 hours in milliseconds
     const now = new Date();
 
     // Allow cancellation if the current time is before the 2-hour window prior to the service
@@ -330,7 +329,7 @@ export default function Navbar() {
 
   const subtotal = cartItems.reduce(
     (a, b) => a + (b.price + (b.visit || 0)) * (b.quantity || 1),
-    0
+    0,
   );
 
   const handleUpdateQuantity = async (action, item) => {
@@ -343,20 +342,22 @@ export default function Navbar() {
       let response;
       if (action === "increment") {
         response = await AxiosInstance.post(
-          "http://localhost:3000/api/cart/add",
+          "/api/cart/add",
           { userId: user.id, service: item },
           { headers: { Authorization: `Bearer ${token}` } },
         );
       } else if (action === "decrement") {
         response = await AxiosInstance.put(
-          "http://localhost:3000/api/cart/decrement",
+          "/api/cart/decrement",
           { userId: user.id, serviceId: item.id },
           { headers: { Authorization: `Bearer ${token}` } },
         );
       }
       if (response && response.data.cart) {
         const frontendCart = response.data.cart.map((dbItem) => {
-          const existingItem = cartItems.find((i) => i.id === dbItem.service_id);
+          const existingItem = cartItems.find(
+            (i) => i.id === dbItem.service_id,
+          );
           return {
             ...existingItem,
             id: dbItem.service_id,
@@ -380,10 +381,9 @@ export default function Navbar() {
     }
     try {
       const token = localStorage.getItem("token");
-      await AxiosInstance.delete(
-        `http://localhost:3000/api/cart/remove/${user.id}/${serviceId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await AxiosInstance.delete(`/api/cart/remove/${user.id}/${serviceId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       dispatch(removeFromCart(serviceId));
     } catch (error) {
       console.error("Error removing item:", error);
@@ -412,117 +412,105 @@ export default function Navbar() {
 
       <nav className="navbar" key={location.pathname} data-aos="fade-down">
         <div className="container navbar-inner">
+          {/* 1. LOGO SECTION - Inline styles removed so CSS can control it */}
           <div className="logo">
-            <Link
-              to="/"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "15px",
-                textDecoration: "none",
-              }}
-            >
-              <img
-                src={logo}
-                alt="logo"
-                style={{ height: "140px", width: "140px", margin: "-30px 0" }}
-              />
-              <span
-                style={{
-                  fontSize: "26px",
-                  fontWeight: "800",
-                  color: "white",
-                  letterSpacing: "1px",
-                }}
-              >
-                ServiceNest
-              </span>
+            <Link to="/" className="brand-link">
+              <img src={logo} alt="logo" className="nav-logo-img" />
+              <span className="nav-logo-text">ServiceNest</span>
             </Link>
           </div>
-          <div className="nav-links">
-            <Link to="/">Home</Link>
-            <a href="/#services">Services</a>
-            <a href="/#categories">Categories</a>
+
+          {/* 2. NAV LINKS */}
+          <div
+            className={`nav-links ${isMobileMenuOpen ? "mobile-active" : ""}`}
+          >
+            <Link to="/" onClick={() => setIsMobileMenuOpen(false)}>
+              Home
+            </Link>
+            <a href="/#services" onClick={() => setIsMobileMenuOpen(false)}>
+              Services
+            </a>
+            <a href="/#categories" onClick={() => setIsMobileMenuOpen(false)}>
+              Categories
+            </a>
           </div>
-          <div className="nav-actions">
-            {user ? (
-              <>
-                <div
-                  style={{
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
+
+          {/* 3. RIGHT SIDE (Actions + Hamburger grouped together) */}
+          <div className="nav-right">
+            <div className="nav-actions">
+              {user ? (
+                <>
                   <div
-                    title={username || "Profile"}
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
                     style={{
-                      cursor: "pointer",
+                      position: "relative",
                       display: "flex",
                       alignItems: "center",
                     }}
                   >
-                    <FaUserCircle size={28} color="white" />
-                  </div>
-
-                  {isHovered && !dropdownOpen && (
                     <div
+                      title={username || "Profile"}
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                      onMouseEnter={() => setIsHovered(true)}
+                      onMouseLeave={() => setIsHovered(false)}
                       style={{
-                        position: "absolute",
-                        bottom: "35px",
-                        right: "50%",
-                        transform: "translateX(50%)",
-                        backgroundColor: "#333",
-                        color: "#fff",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        whiteSpace: "nowrap",
-                        zIndex: 1000,
-                      }}
-                    >
-                      {username || "Profile"}
-                    </div>
-                  )}
-
-                  {dropdownOpen && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "40px",
-                        right: "0",
-                        backgroundColor: "white",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                        cursor: "pointer",
                         display: "flex",
-                        flexDirection: "column",
-                        minWidth: "170px",
-                        overflow: "hidden",
-                        zIndex: 1000,
-                        padding: "5px 0",
+                        alignItems: "center",
                       }}
                     >
+                      <FaUserCircle size={28} color="white" />
+                    </div>
+
+                    {isHovered && !dropdownOpen && (
                       <div
                         style={{
-                          padding: "10px 20px",
-                          fontWeight: "bold",
-                          borderBottom: "1px solid #eee",
+                          position: "absolute",
+                          bottom: "35px",
+                          right: "50%",
+                          transform: "translateX(50%)",
+                          backgroundColor: "#333",
+                          color: "#fff",
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          whiteSpace: "nowrap",
+                          zIndex: 1000,
                         }}
                       >
-                        {username}
+                        {username || "Profile"}
                       </div>
-                      {/* old admin double login logic */}
-                      {/* {user?.role?.toLowerCase() === "admin" && (
+                    )}
+
+                    {dropdownOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "40px",
+                          right: "0",
+                          backgroundColor: "white",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                          display: "flex",
+                          flexDirection: "column",
+                          minWidth: "170px",
+                          overflow: "hidden",
+                          zIndex: 1000,
+                          padding: "5px 0",
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: "10px 20px",
+                            fontWeight: "bold",
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          {username}
+                        </div>
                         <button
                           onClick={() => {
                             setDropdownOpen(false);
-                            // Redirect to admin dashboard directly for logged-in admins.
-                            // Previous behavior: window.open("/admin/login", "_blank");
-                            // That used to require re-login and trigger double login flow.
-                            navigate("/admin");
+                            setShowMyServicesModal(true);
                           }}
                           style={{
                             ...dropdownItemStyle,
@@ -532,101 +520,201 @@ export default function Navbar() {
                             width: "100%",
                             cursor: "pointer",
                             fontFamily: "inherit",
-                            color: "#007bff",
-                            fontWeight: "bold",
                           }}
                         >
-                          Admin Dashboard
+                          My Services
                         </button>
-                      )} */}
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          setShowMyServicesModal(true);
-                        }}
-                        style={{
-                          ...dropdownItemStyle,
-                          border: "none",
-                          background: "none",
-                          textAlign: "left",
-                          width: "100%",
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                        }}
-                      >
-                        My Services
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          setShowHelpModal(true);
-                        }}
-                        style={{
-                          ...dropdownItemStyle,
-                          border: "none",
-                          background: "none",
-                          textAlign: "left",
-                          width: "100%",
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                        }}
-                      >
-                        Help & Support
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          setShowSettingsModal(true);
-                        }}
-                        style={{
-                          ...dropdownItemStyle,
-                          border: "none",
-                          background: "none",
-                          textAlign: "left",
-                          width: "100%",
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                        }}
-                      >
-                        Settings
-                      </button>
-                      <div
-                        style={{
-                          height: "1px",
-                          backgroundColor: "#eee",
-                          margin: "5px 0",
-                        }}
-                      ></div>
-                      <button
-                        onClick={handleLogout}
-                        style={{
-                          ...dropdownItemStyle,
-                          border: "none",
-                          background: "none",
-                          textAlign: "left",
-                          width: "100%",
-                          cursor: "pointer",
-                          color: "#d9534f",
-                          fontFamily: "inherit",
-                        }}
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <Link to="/login" className="login-btn">
-                Login
-              </Link>
-            )}
-            <a className="cart-icon" onClick={() => setIsCartOpen(true)} style={{ cursor: "pointer" }}>
-              <FaShoppingCart />
-              <span className="cart-badge">{cartItems.length}</span>
-            </a>
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            setShowHelpModal(true);
+                          }}
+                          style={{
+                            ...dropdownItemStyle,
+                            border: "none",
+                            background: "none",
+                            textAlign: "left",
+                            width: "100%",
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          Help & Support
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            setShowSettingsModal(true);
+                          }}
+                          style={{
+                            ...dropdownItemStyle,
+                            border: "none",
+                            background: "none",
+                            textAlign: "left",
+                            width: "100%",
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          Settings
+                        </button>
+                        <div
+                          style={{
+                            height: "1px",
+                            backgroundColor: "#eee",
+                            margin: "5px 0",
+                          }}
+                        ></div>
+                        <button
+                          onClick={handleLogout}
+                          style={{
+                            ...dropdownItemStyle,
+                            border: "none",
+                            background: "none",
+                            textAlign: "left",
+                            width: "100%",
+                            cursor: "pointer",
+                            color: "#d9534f",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <Link to="/login" className="login-btn">
+                  Login
+                </Link>
+              )}
+              <a
+                className="cart-icon"
+                onClick={() => setIsCartOpen(true)}
+                style={{ cursor: "pointer" }}
+              >
+                <FaShoppingCart />
+                <span className="cart-badge">{cartItems.length}</span>
+              </a>
+            </div>
+
+            <button
+              className="mobile-menu-toggle"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
+            </button>
           </div>
         </div>
+
+        {/* 4. UNIFIED STYLES - Handles both desktop and mobile sizings safely */}
+        <style>{`
+          .navbar-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          
+          .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+          }
+
+          /* Move Desktop inline styles here */
+          .nav-logo-img {
+            height: 140px;
+            width: 140px;
+            margin: -30px 0;
+            object-fit: contain;
+          }
+
+          .nav-logo-text {
+            font-size: 26px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: 1px;
+          }
+
+          .nav-right, .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+          }
+
+          .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+          }
+
+          /* Mobile adjustments */
+          @media (max-width: 768px) {
+            .navbar-inner {
+              flex-wrap: wrap !important;
+            }
+
+            /* Now the CSS can successfully shrink the logo! */
+            .nav-logo-img {
+              height: 60px !important;
+              width: 60px !important;
+              margin: 0 !important;
+            }
+
+            .nav-logo-text {
+              font-size: 20px !important;
+            }
+
+            .brand-link {
+              gap: 10px !important;
+            }
+
+            .mobile-menu-toggle {
+              display: block !important;
+              margin-left: 10px;
+            }
+
+            .nav-links {
+              display: none !important;
+              width: 100%;
+              flex-direction: column;
+              background: rgba(11, 60, 112, 0.95);
+              padding: 15px;
+              border-radius: 8px;
+              margin-top: 15px;
+              order: 3;
+              gap: 15px;
+              text-align: center;
+            }
+
+            .nav-links.mobile-active {
+              display: flex !important;
+            }
+            
+            .nav-right, .nav-actions {
+              gap: 10px !important;
+            }
+          }
+
+          @media (max-width: 400px) {
+            .nav-logo-img {
+              height: 50px !important;
+              width: 50px !important;
+            }
+            .nav-logo-text {
+              font-size: 16px !important;
+            }
+            .nav-right, .nav-actions {
+              gap: 8px !important;
+            }
+          }
+        `}</style>
       </nav>
 
       {showHelpModal && (
@@ -832,7 +920,8 @@ export default function Navbar() {
                   cursor: "pointer",
                 }}
               >
-                <input type="checkbox" defaultChecked /> Receive SMS notifications
+                <input type="checkbox" defaultChecked /> Receive SMS
+                notifications
               </label>
               <hr
                 style={{
@@ -946,38 +1035,66 @@ export default function Navbar() {
                         </span>
                       )}
                       {item.status === "Accepted" ? (
-                        <span style={{ fontSize: "14px", color: "#28a745", fontWeight: "500", marginTop: "4px" }}>
+                        <span
+                          style={{
+                            fontSize: "14px",
+                            color: "#28a745",
+                            fontWeight: "500",
+                            marginTop: "4px",
+                          }}
+                        >
                           ✅ Provider Assigned - Arriving on{" "}
                           {item.schedule_date
                             ? new Date(item.schedule_date).toLocaleDateString(
                                 undefined,
-                                { year: "numeric", month: "short", day: "numeric" }
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                },
                               )
-                            : "the scheduled date"}
-                          {" "}between {item.schedule_time || "the scheduled time"}
+                            : "the scheduled date"}{" "}
+                          between {item.schedule_time || "the scheduled time"}
                         </span>
                       ) : (
-                        <span style={{ fontSize: "14px", color: "#d39e00", fontWeight: "500", marginTop: "4px" }}>
+                        <span
+                          style={{
+                            fontSize: "14px",
+                            color: "#d39e00",
+                            fontWeight: "500",
+                            marginTop: "4px",
+                          }}
+                        >
                           ⏳ Service Pending
                         </span>
                       )}
-                      {(item.status === "Pending" || item.status === "Accepted" || !item.status) && (
+                      {(item.status === "Pending" ||
+                        item.status === "Accepted" ||
+                        !item.status) && (
                         <button
                           onClick={() => handleCancelBooking(item.id)}
                           disabled={!isCancellationAllowed(item)}
                           style={{
                             marginTop: "8px",
                             padding: "6px 12px",
-                            backgroundColor: isCancellationAllowed(item) ? "#dc3545" : "#cccccc",
+                            backgroundColor: isCancellationAllowed(item)
+                              ? "#dc3545"
+                              : "#cccccc",
                             color: "white",
                             border: "none",
                             borderRadius: "5px",
-                            cursor: isCancellationAllowed(item) ? "pointer" : "not-allowed",
+                            cursor: isCancellationAllowed(item)
+                              ? "pointer"
+                              : "not-allowed",
                             fontSize: "12px",
                             fontWeight: "bold",
-                            alignSelf: "flex-start"
+                            alignSelf: "flex-start",
                           }}
-                          title={isCancellationAllowed(item) ? "Cancel this booking" : "Cancellations are only allowed up to 2 hours before the scheduled time"}
+                          title={
+                            isCancellationAllowed(item)
+                              ? "Cancel this booking"
+                              : "Cancellations are only allowed up to 2 hours before the scheduled time"
+                          }
                         >
                           Cancel Booking
                         </button>
@@ -1000,21 +1117,47 @@ export default function Navbar() {
 
       {bookingToCancel && (
         <div style={modalOverlayStyle} onClick={() => setBookingToCancel(null)}>
-          <div style={{ ...modalContentStyle, maxWidth: "400px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#333" }}>Confirm Cancellation</h3>
+          <div
+            style={{
+              ...modalContentStyle,
+              maxWidth: "400px",
+              textAlign: "center",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#333" }}>
+              Confirm Cancellation
+            </h3>
             <p style={{ margin: "0 0 25px", fontSize: "16px", color: "#555" }}>
               Are you sure you want to cancel this booking?
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: "15px", width: "100%" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: "15px",
+                width: "100%",
+              }}
+            >
               <button
                 onClick={confirmCancelBooking}
-                style={{ ...actionButtonStyle, flex: 1, backgroundColor: "#dc3545", padding: "10px" }}
+                style={{
+                  ...actionButtonStyle,
+                  flex: 1,
+                  backgroundColor: "#dc3545",
+                  padding: "10px",
+                }}
               >
                 Yes
               </button>
               <button
                 onClick={() => setBookingToCancel(null)}
-                style={{ ...actionButtonStyle, flex: 2, backgroundColor: "#6c757d", padding: "10px" }}
+                style={{
+                  ...actionButtonStyle,
+                  flex: 2,
+                  backgroundColor: "#6c757d",
+                  padding: "10px",
+                }}
               >
                 No, Keep it
               </button>
@@ -1025,47 +1168,149 @@ export default function Navbar() {
 
       {isCartOpen && (
         <>
-          <div className="cart-drawer-overlay" onClick={() => setIsCartOpen(false)}></div>
+          <div
+            className="cart-drawer-overlay"
+            onClick={() => setIsCartOpen(false)}
+          ></div>
           <div className="cart-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="cart-drawer-header">
               <h2>Your Cart ({cartItems.length})</h2>
-              <button className="cart-drawer-close" onClick={() => setIsCartOpen(false)}>
+              <button
+                className="cart-drawer-close"
+                onClick={() => setIsCartOpen(false)}
+              >
                 &times;
               </button>
             </div>
             <div className="cart-drawer-body">
               {cartItems.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#777", marginTop: "40px" }}>
-                  <FaShoppingCart size={40} style={{ opacity: 0.3, marginBottom: "15px" }} />
-                  <p style={{ margin: 0, fontSize: "16px" }}>Your cart is empty!</p>
+                <div
+                  style={{
+                    textAlign: "center",
+                    color: "#777",
+                    marginTop: "40px",
+                  }}
+                >
+                  <FaShoppingCart
+                    size={40}
+                    style={{ opacity: 0.3, marginBottom: "15px" }}
+                  />
+                  <p style={{ margin: 0, fontSize: "16px" }}>
+                    Your cart is empty!
+                  </p>
                 </div>
               ) : (
                 cartItems.map((item) => (
-                  <div key={item.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid #eee", paddingBottom: "15px" }}>
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "20px",
+                      borderBottom: "1px solid #eee",
+                      paddingBottom: "15px",
+                    }}
+                  >
                     <div>
-                      <h4 style={{ margin: "0 0 5px 0", color: "#333", fontSize: "16px" }}>{item.name}</h4>
-                      <p style={{ margin: "0 0 10px 0", color: "#ff7a00", fontWeight: "bold" }}>
-                        ₹{(item.price + (item.visit || 0)) * (item.quantity || 1)}
+                      <h4
+                        style={{
+                          margin: "0 0 5px 0",
+                          color: "#333",
+                          fontSize: "16px",
+                        }}
+                      >
+                        {item.name}
+                      </h4>
+                      <p
+                        style={{
+                          margin: "0 0 10px 0",
+                          color: "#ff7a00",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        ₹
+                        {(item.price + (item.visit || 0)) *
+                          (item.quantity || 1)}
                       </p>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#fff", border: "1px solid #e0e0e0", padding: "4px 8px", borderRadius: "6px", width: "fit-content" }}>
-                        <button 
-                          onClick={() => handleUpdateQuantity("decrement", item)} 
-                          style={{ width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#ff9800", border: "none", color: "white", fontWeight: "bold", cursor: "pointer", borderRadius: "4px" }}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          backgroundColor: "#fff",
+                          border: "1px solid #e0e0e0",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          width: "fit-content",
+                        }}
+                      >
+                        <button
+                          onClick={() =>
+                            handleUpdateQuantity("decrement", item)
+                          }
+                          style={{
+                            width: "24px",
+                            height: "24px",
+                            padding: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "#ff9800",
+                            border: "none",
+                            color: "white",
+                            fontWeight: "bold",
+                            cursor: "pointer",
+                            borderRadius: "4px",
+                          }}
                         >
                           -
                         </button>
-                        <span style={{ fontSize: "14px", fontWeight: "700", minWidth: "16px", textAlign: "center", color: "#333" }}>{item.quantity || 1}</span>
-                        <button 
-                          onClick={() => handleUpdateQuantity("increment", item)} 
-                          style={{ width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#ff9800", border: "none", color: "white", fontWeight: "bold", cursor: "pointer", borderRadius: "4px" }}
+                        <span
+                          style={{
+                            fontSize: "14px",
+                            fontWeight: "700",
+                            minWidth: "16px",
+                            textAlign: "center",
+                            color: "#333",
+                          }}
+                        >
+                          {item.quantity || 1}
+                        </span>
+                        <button
+                          onClick={() =>
+                            handleUpdateQuantity("increment", item)
+                          }
+                          style={{
+                            width: "24px",
+                            height: "24px",
+                            padding: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "#ff9800",
+                            border: "none",
+                            color: "white",
+                            fontWeight: "bold",
+                            cursor: "pointer",
+                            borderRadius: "4px",
+                          }}
                         >
                           +
                         </button>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => handleRemoveItem(item.id)} 
-                      style={{ background: "none", border: "none", color: "#ff4d4d", cursor: "pointer", alignSelf: "flex-start", fontSize: "14px", fontWeight: "500", padding: "5px" }}
+                    <button
+                      onClick={() => handleRemoveItem(item.id)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#ff4d4d",
+                        cursor: "pointer",
+                        alignSelf: "flex-start",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        padding: "5px",
+                      }}
                     >
                       Remove
                     </button>
@@ -1075,22 +1320,59 @@ export default function Navbar() {
             </div>
             {cartItems.length > 0 && (
               <div className="cart-drawer-footer">
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", fontSize: "18px", fontWeight: "bold", color: "#333" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: "15px",
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    color: "#333",
+                  }}
+                >
                   <span>Subtotal:</span>
                   <span>₹{subtotal}</span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <button 
-                    className="login-btn" 
-                    style={{ width: "100%", padding: "12px", fontSize: "16px", textAlign: "center", backgroundColor: "#f5f7fb", color: "#1e6bb8", border: "1px solid #1e6bb8", boxShadow: "none" }} 
-                    onClick={() => { setIsCartOpen(false); navigate("/cart"); }}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                  }}
+                >
+                  <button
+                    className="login-btn"
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      fontSize: "16px",
+                      textAlign: "center",
+                      backgroundColor: "#f5f7fb",
+                      color: "#1e6bb8",
+                      border: "1px solid #1e6bb8",
+                      boxShadow: "none",
+                    }}
+                    onClick={() => {
+                      setIsCartOpen(false);
+                      navigate("/cart");
+                    }}
                   >
                     View Full Cart
                   </button>
-                  <button 
-                    className="login-btn" 
-                    style={{ width: "100%", padding: "12px", fontSize: "16px", textAlign: "center", backgroundColor: "#28a745", boxShadow: "0 4px 15px rgba(40,167,69,0.3)" }} 
-                    onClick={() => { setIsCartOpen(false); navigate("/schedule"); }}
+                  <button
+                    className="login-btn"
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      fontSize: "16px",
+                      textAlign: "center",
+                      backgroundColor: "#28a745",
+                      boxShadow: "0 4px 15px rgba(40,167,69,0.3)",
+                    }}
+                    onClick={() => {
+                      setIsCartOpen(false);
+                      navigate("/schedule");
+                    }}
                   >
                     Proceed to Checkout
                   </button>

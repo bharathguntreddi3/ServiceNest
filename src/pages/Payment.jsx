@@ -25,7 +25,9 @@ export default function Payment() {
     }
 
     if (!scheduleDetails) {
-      toast.error("Booking details are missing. Please go back to the schedule page.");
+      toast.error(
+        "Booking details are missing. Please go back to the schedule page.",
+      );
       navigate("/schedule");
       return;
     }
@@ -35,7 +37,7 @@ export default function Payment() {
       const token = localStorage.getItem("token");
       // Call the checkout endpoint to move items to bookings
       await AxiosInstance.post(
-        "http://localhost:3000/api/checkout",
+        "/api/checkout",
         {
           userId: user.id,
           ...scheduleDetails, // address, phone, scheduleDate, scheduleTime
@@ -91,10 +93,17 @@ export default function Payment() {
   }
 
   return (
-    <div className="auth-container" style={{ flexDirection: "column", paddingTop: "60px" }}>
+    <div
+      className="auth-container"
+      style={{ flexDirection: "column", paddingTop: "60px" }}
+    >
       <CheckoutStepper currentStep={3} />
 
-      <div className="auth-card" data-aos="zoom-in" style={{ marginTop: "20px" }}>
+      <div
+        className="auth-card"
+        data-aos="zoom-in"
+        style={{ marginTop: "20px" }}
+      >
         <h2>Select Payment Method</h2>
         <p>Choose how you would like to pay for your service</p>
 
@@ -151,20 +160,31 @@ export default function Payment() {
               onChange={(e) => setPaymentMethod(e.target.value)}
               style={radioStyle}
             />{" "}
-            Cash On
-            Delivery
+            Cash On Delivery
           </label>
         </div>
 
-        <button className="login-btn mobile-hide" onClick={pay} disabled={isProcessing} style={{ marginTop: "15px" }}>
+        <button
+          className="login-btn mobile-hide"
+          onClick={pay}
+          disabled={isProcessing}
+          style={{ marginTop: "15px" }}
+        >
           {isProcessing ? "Processing..." : "Confirm Payment"}
         </button>
       </div>
-      <div className="mobile-floating-footer desktop-hide" style={{ justifyContent: "center" }}>
-        <button 
-          className="login-btn" 
-          style={{ width: "100%", padding: "14px", backgroundColor: isProcessing ? "#ccc" : "" }} 
-          onClick={pay} 
+      <div
+        className="mobile-floating-footer desktop-hide"
+        style={{ justifyContent: "center" }}
+      >
+        <button
+          className="login-btn"
+          style={{
+            width: "100%",
+            padding: "14px",
+            backgroundColor: isProcessing ? "#ccc" : "",
+          }}
+          onClick={pay}
           disabled={isProcessing}
         >
           {isProcessing ? "Processing..." : "Confirm Payment"}
